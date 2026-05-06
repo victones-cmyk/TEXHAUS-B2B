@@ -1,73 +1,73 @@
-# React + TypeScript + Vite
+# Texhaus B2B - Loja Virtual WordPress + WooCommerce
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+Site de loja virtual B2B para a Texhaus, distribuidora de tecidos e acessórios para cortinas e persianas.
 
-Currently, two official plugins are available:
+## Estrutura do Projeto
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
-
-## React Compiler
-
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
-
-## Expanding the ESLint configuration
-
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
-
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
-
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+```
+├── PROJETO.md                              # Documentação completa do projeto
+├── wp-content/
+│   ├── themes/
+│   │   └── texhaus-b2b/                    # Tema WordPress Texhaus B2B
+│   │       ├── style.css                   # Cabeçalho do tema
+│   │       ├── functions.php               # Funções principais
+│   │       ├── header.php                  # Header com logo e menu
+│   │       ├── footer.php                  # Footer com WhatsApp flutuante
+│   │       ├── front-page.php              # Página inicial
+│   │       ├── index.php                   # Template fallback
+│   │       ├── page.php                    # Página padrão
+│   │       ├── single.php                  # Post individual
+│   │       ├── archive.php                 # Arquivo de posts
+│   │       ├── page-cadastro-b2b.php       # Cadastro B2B
+│   │       ├── page-contato.php            # Contato
+│   │       ├── page-carrinho.php           # Carrinho
+│   │       ├── page-checkout.php           # Checkout
+│   │       ├── page-minha-conta.php        # Minha Conta
+│   │       ├── single-product.php          # Produto individual
+│   │       ├── archive-product.php         # Lista de produtos
+│   │       ├── 404.php                     # Página 404
+│   │       ├── search.php                  # Busca
+│   │       ├── sidebar.php                 # Sidebar blog
+│   │       ├── sidebar-shop.php            # Sidebar loja
+│   │       ├── product-searchform.php      # Formulário de busca
+│   │       ├── inc/                        # Includes do tema
+│   │       │   ├── b2b-registration.php
+│   │       │   ├── b2b-approval.php
+│   │       │   ├── b2b-price-control.php
+│   │       │   └── woocommerce-overrides.php
+│   │       ├── template-parts/
+│   │       ├── assets/css/
+│   │       │   ├── texhaus-theme.css
+│   │       │   └── texhaus-woocommerce.css
+│   │       └── assets/js/
+│   │           └── texhaus-theme.js
+│   └── plugins/
+│       └── texhaus-b2b-utils/              # Plugin de utilitários B2B
+│           ├── texhaus-b2b-utils.php
+│           └── includes/
+│               ├── class-b2b-user-roles.php
+│               ├── class-b2b-registration.php
+│               ├── class-b2b-approval.php
+│               ├── class-b2b-price-control.php
+│               └── class-b2b-admin.php
+└── PROJETO.md                              # Documentação completa
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+## Funcionalidades Principais
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
+- **Cadastro B2B com aprovação manual**: formulário estendido (nome, empresa, CNPJ, e-mail, telefone, cidade, estado, tipo de cliente)
+- **Roles personalizadas**: `b2b_pending`, `b2b_approved`, `b2b_rejected`
+- **Notificações por e-mail**: admin é notificado de novos cadastros; usuário recebe e-mail quando aprovado
+- **Ocultação de preços**: visitantes e usuários não aprovados não veem preços nem botão de compra
+- **WhatsApp flutuante**: botão fixo no canto inferior direito
+- **Newsletter**: formulário de inscrição com armazenamento no banco de dados
+- **Responsivo**: layout adaptável para desktop, tablet e mobile
 
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
-```
+## Como Usar
+
+1. Instale WordPress + WooCommerce
+2. Copie `wp-content/themes/texhaus-b2b/` para `wp-content/themes/` do seu WordPress
+3. Ative o tema em Aparência > Temas
+4. Copie `wp-content/plugins/texhaus-b2b-utils/` para `wp-content/plugins/`
+5. Ative o plugin em Plugins
+6. Consulte o arquivo `PROJETO.md` para o checklist completo de implementação
