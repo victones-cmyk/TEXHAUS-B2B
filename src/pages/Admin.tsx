@@ -5,6 +5,7 @@ import { AdminApprovals } from '../components/Admin/AdminApprovals';
 import { AdminProducts } from '../components/Admin/AdminProducts';
 import { AdminOrders } from '../components/Admin/AdminOrders';
 import { AdminPosts } from '../components/Admin/AdminPosts';
+import { AdminCategories } from '../components/Admin/AdminCategories';
 
 export function Admin() {
   const { isAdmin, loading, signOut } = useAuth();
@@ -44,6 +45,7 @@ export function Admin() {
           <Link to="/admin/products" className={getActiveClass('/admin/products')}>Produtos</Link>
           <Link to="/admin/orders" className={getActiveClass('/admin/orders')}>Pedidos</Link>
           <Link to="/admin/blog" className={getActiveClass('/admin/blog')}>Blog</Link>
+          <Link to="/admin/categories" className={getActiveClass('/admin/categories')}>Categorias</Link>
         </nav>
         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
           <Link to="/" className="btn-logout-admin">← Voltar para a Loja</Link>
@@ -59,6 +61,7 @@ export function Admin() {
           <Route path="products" element={<AdminProducts />} />
           <Route path="orders" element={<AdminOrders />} />
           <Route path="blog" element={<AdminPosts />} />
+          <Route path="categories" element={<AdminCategories />} />
         </Routes>
       </main>
     </div>

@@ -6,6 +6,7 @@ import type { Product, ProductVariation } from '../../types';
 interface Category {
   id: string;
   name: string;
+  parent_id: string | null;
 }
 
 interface ProductModalProps {
@@ -218,7 +219,16 @@ export function ProductModal({ product, onClose }: ProductModalProps) {
                 {categories.length > 0 ? (
                   <select value={categoryId} onChange={e => setCategoryId(e.target.value)}>
                     <option value="">Selecione...</option>
-                    {categories.map(c => <option key={c.id} value={c.name}>{c.name}</option>)}
+                    {(() => {
+                      const opts: React.ReactNode[] = [];
+                      categories.filter(c => !c.parent_id).forEach(root => {
+                        opts.push(<option key={root.id} value={root.name}>{root.name}</option>);
+                        categories.filter(c => c.parent_id === root.id).forEach(sub => {
+                          opts.push(<option key={sub.id} value={sub.name}>&nbsp;&nbsp;&nbsp;{sub.name}</option>);
+                        });
+                      });
+                      return opts;
+                    })()}
                   </select>
                 ) : (
                   <input type="text" value={categoryId} onChange={e => setCategoryId(e.target.value)} placeholder="Digite a categoria" />

@@ -138,6 +138,63 @@ export function Checkout() {
               </div>
 
               <div className="checkout-section">
+                <h3>Formas de Pagamento</h3>
+                <div className="payment-methods-list">
+                  <div className="payment-method-item">
+                    <div>
+                      <strong>Pix</strong>
+                      <span className="payment-discount">5% de desconto</span>
+                    </div>
+                    <span className="payment-desc">Pagamento instantâneo</span>
+                  </div>
+                  <div className="payment-method-item">
+                    <div>
+                      <strong>Cartão de Crédito</strong>
+                      <span className="payment-discount">Parcele em até 12x</span>
+                    </div>
+                    <span className="payment-desc">Com ou sem juros</span>
+                  </div>
+                  <div className="payment-method-item">
+                    <div>
+                      <strong>Boleto Bancário</strong>
+                    </div>
+                    <span className="payment-desc">Vencimento em 3 dias úteis</span>
+                  </div>
+                </div>
+              </div>
+
+              <div className="checkout-section">
+                <h3>Formas de Entrega</h3>
+                <div className="shipping-methods-list">
+                  <div className="shipping-method-item">
+                    <strong>Retirada na Empresa</strong>
+                    <span className="shipping-price">Grátis</span>
+                    <span className="shipping-desc">São Paulo, SP</span>
+                  </div>
+                  <div className="shipping-method-item">
+                    <strong>Frete Fixo - Capital SP</strong>
+                    <span className="shipping-price">R$ 19,90</span>
+                    <span className="shipping-desc">1 a 3 dias úteis</span>
+                  </div>
+                  <div className="shipping-method-item">
+                    <strong>Frete Fixo - Grande SP</strong>
+                    <span className="shipping-price">R$ 29,90</span>
+                    <span className="shipping-desc">2 a 5 dias úteis</span>
+                  </div>
+                  <div className="shipping-method-item">
+                    <strong>Frete Fixo - Sudeste</strong>
+                    <span className="shipping-price">R$ 39,90</span>
+                    <span className="shipping-desc">3 a 7 dias úteis</span>
+                  </div>
+                  <div className="shipping-method-item">
+                    <strong>Frete Fixo - Demais Regiões</strong>
+                    <span className="shipping-price">R$ 59,90</span>
+                    <span className="shipping-desc">5 a 15 dias úteis</span>
+                  </div>
+                </div>
+              </div>
+
+              <div className="checkout-section">
                 <h3>Observações</h3>
                 <textarea
                   className="checkout-notes"

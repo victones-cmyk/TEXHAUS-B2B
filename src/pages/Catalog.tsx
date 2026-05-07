@@ -32,10 +32,16 @@ export function Catalog() {
       });
   }, []);
 
+  const [catTree, setCatTree] = useState<{ id: string; name: string; parent_id: string | null }[]>([]);
   const categories = useMemo(() => {
     const cats = new Set(products.map(p => p.category));
     return ['Todas', ...Array.from(cats).sort()];
   }, [products]);
+
+  useEffect(() => {
+    supabase.from('categories').select('*').order('sort_order')
+      .then(({ data }) => { if (data) setCatTree(data); });
+  }, []);
 
   const filtered = useMemo(() => {
     let result = [...products];
@@ -99,13 +105,24 @@ export function Catalog() {
                 <div className="filter-section">
                   <h3>Categoria</h3>
                   <div className="filter-categories">
-                    {categories.map(cat => (
-                      <button
-                        key={cat}
-                        className={`filter-cat-btn ${selectedCategory === cat ? 'active' : ''}`}
-                        onClick={() => setSelectedCategory(cat)}
-                      >
-                        {cat} {cat !== 'Todas' && `(${products.filter(p => p.category === cat).length})`}
+                    <button className={`filter-cat-btn ${selectedCategory === 'Todas' ? 'active' : ''}`} onClick={() => setSelectedCategory('Todas')}>
+                      Todas ({products.length})
+                    </button>
+                    {catTree.filter(c => !c.parent_id).map(root => (
+                      <span key={root.id}>
+                        <button className={`filter-cat-btn ${selectedCategory === root.name ? 'active' : ''}`} onClick={() => setSelectedCategory(root.name)}>
+                          {root.name} ({products.filter(p => p.category === root.name).length})
+                        </button>
+                        {catTree.filter(c => c.parent_id === root.id).map(sub => (
+                          <button key={sub.id} className={`filter-cat-btn sub ${selectedCategory === sub.name ? 'active' : ''}`} onClick={() => setSelectedCategory(sub.name)}>
+                            {sub.name} ({products.filter(p => p.category === sub.name).length})
+                          </button>
+                        ))}
+                      </span>
+                    ))}
+                    {catTree.length === 0 && categories.filter(c => c !== 'Todas').map(cat => (
+                      <button key={cat} className={`filter-cat-btn ${selectedCategory === cat ? 'active' : ''}`} onClick={() => setSelectedCategory(cat)}>
+                        {cat} ({products.filter(p => p.category === cat).length})
                       </button>
                     ))}
                   </div>
