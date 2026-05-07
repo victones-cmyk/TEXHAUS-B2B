@@ -17,6 +17,10 @@ app.use(cors());
 app.use(express.json({ limit: '10mb' }));
 
 // Health check
+app.get('/api', (_req, res) => {
+  res.json({ status: 'ok', message: 'Texhaus B2B API' });
+});
+
 app.get('/api/health', (_req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
 });
@@ -31,9 +35,10 @@ app.use('/api/posts', postsRoutes);
 app.use('/api/contact', contactRoutes);
 
 // Error handler
-app.use((err: any, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
+app.use((err: Error, _req: express.Request, res: express.Response, next: express.NextFunction) => {
   console.error('Unhandled error:', err);
   res.status(500).json({ message: 'Erro interno do servidor' });
+  void next;
 });
 
 app.listen(PORT, '0.0.0.0', () => {

@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Link, useParams } from 'react-router-dom';
-import { supabase } from '../lib/supabase';
+import { api } from '../lib/api';
 import { Navbar } from '../components/Navbar';
 import { Footer } from '../components/Footer';
 import { SEO } from '../components/SEO';
@@ -22,15 +22,10 @@ export function BlogPost() {
 
   useEffect(() => {
     if (!id) return;
-    supabase
-      .from('posts')
-      .select('*')
-      .eq('id', id)
-      .maybeSingle()
-      .then(({ data, error }) => {
-        if (!error && data) setPost(data);
-        setLoading(false);
-      });
+    api<Post>(`/posts/${id}`)
+      .then(setPost)
+      .catch(() => {})
+      .finally(() => setLoading(false));
   }, [id]);
 
   if (loading) {

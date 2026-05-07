@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useCart } from '../contexts/CartContext';
-import { supabase } from '../lib/supabase';
+import { api } from '../lib/api';
 import { Navbar } from '../components/Navbar';
 import { Footer } from '../components/Footer';
 import { SEO } from '../components/SEO';
@@ -16,15 +16,10 @@ export function Home() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    supabase
-      .from('products')
-      .select('*')
-      .eq('status', 'published')
-      .order('created_at', { ascending: false })
-      .then(({ data, error }) => {
-        if (!error && data) setProducts(data);
-        setLoading(false);
-      });
+    api<Product[]>('/products/published')
+      .then(setProducts)
+      .catch(() => {})
+      .finally(() => setLoading(false));
   }, []);
 
   const canSeePrice = isLoggedIn && isB2BApproved;

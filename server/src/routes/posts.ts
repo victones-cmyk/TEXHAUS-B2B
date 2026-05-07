@@ -8,7 +8,7 @@ router.get('/', async (_req: Request, res: Response) => {
   try {
     const result = await query('SELECT * FROM posts ORDER BY created_at DESC');
     res.json(result.rows);
-  } catch (err: any) {
+  } catch (err: unknown) {
     console.error('Posts list error:', err);
     res.status(500).json({ message: 'Erro ao listar posts' });
   }
@@ -22,7 +22,7 @@ router.get('/:id', async (req: Request, res: Response) => {
       return;
     }
     res.json(result.rows[0]);
-  } catch (err: any) {
+  } catch (err: unknown) {
     console.error('Post detail error:', err);
     res.status(500).json({ message: 'Erro ao buscar post' });
   }
@@ -40,7 +40,7 @@ router.post('/', requireAdmin, async (req: AuthRequest, res: Response) => {
       [title, content || '', excerpt || '', category || '', image_url || ''],
     );
     res.status(201).json(result.rows[0]);
-  } catch (err: any) {
+  } catch (err: unknown) {
     console.error('Post create error:', err);
     res.status(500).json({ message: 'Erro ao criar post' });
   }
@@ -58,7 +58,7 @@ router.put('/:id', requireAdmin, async (req: AuthRequest, res: Response) => {
       return;
     }
     res.json(result.rows[0]);
-  } catch (err: any) {
+  } catch (err: unknown) {
     console.error('Post update error:', err);
     res.status(500).json({ message: 'Erro ao atualizar post' });
   }
@@ -72,7 +72,7 @@ router.delete('/:id', requireAdmin, async (req: AuthRequest, res: Response) => {
       return;
     }
     res.json({ message: 'Post excluído' });
-  } catch (err: any) {
+  } catch (err: unknown) {
     console.error('Post delete error:', err);
     res.status(500).json({ message: 'Erro ao excluir post' });
   }

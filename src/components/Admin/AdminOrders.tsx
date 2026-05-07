@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { supabase } from '../../lib/supabase';
+import { api } from '../../lib/api';
 
 interface OrderItem {
   id: string;
@@ -54,20 +54,20 @@ export function AdminOrders() {
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [itemsMap, setItemsMap] = useState<Record<string, OrderItem[]>>({});
 
+  const fetchOrders = async () => {
+    setLoading(true);
+    try {
+      const data = await api<Order[]>('/orders');
+      setOrders(data);
+    } catch (err) {
+      console.error('Error fetching orders:', err);
+    }
+    setLoading(false);
+  };
+
   useEffect(() => {
     fetchOrders();
   }, []);
-
-  const fetchOrders = async () => {
-    setLoading(true);
-    const { data, error } = await supabase
-      .from('orders')
-      .select('*')
-      .order('created_at', { ascending: false });
-
-    if (!error && data) setOrders(data);
-    setLoading(false);
-  };
 
   const toggleExpand = async (orderId: string) => {
     if (expandedId === orderId) {
@@ -78,27 +78,26 @@ export function AdminOrders() {
     setExpandedId(orderId);
 
     if (!itemsMap[orderId]) {
-      const { data, error } = await supabase
-        .from('order_items')
-        .select('*')
-        .eq('order_id', orderId);
-
-      if (!error && data) {
-        setItemsMap(prev => ({ ...prev, [orderId]: data }));
+      try {
+        const order = await api<Order>(`/orders/${orderId}`);
+        if (order.items) {
+          setItemsMap(prev => ({ ...prev, [orderId]: order.items as OrderItem[] }));
+        }
+      } catch (err) {
+        console.error('Error fetching order details:', err);
       }
     }
   };
 
   const handleStatusChange = async (orderId: string, newStatus: string) => {
-    const { error } = await supabase
-      .from('orders')
-      .update({ status: newStatus })
-      .eq('id', orderId);
-
-    if (!error) {
+    try {
+      await api(`/orders/${orderId}/status`, {
+        method: 'PUT',
+        body: JSON.stringify({ status: newStatus }),
+      });
       setOrders(orders.map(o => o.id === orderId ? { ...o, status: newStatus as Order['status'] } : o));
-    } else {
-      alert('Erro ao atualizar status: ' + error.message);
+    } catch {
+      alert('Erro ao atualizar status');
     }
   };
 
@@ -198,7 +197,6 @@ export function AdminOrders() {
           </table>
         </div>
 
-        {/* Expandable order items */}
         {expandedId && itemsMap[expandedId] && (
           <div style={{ marginTop: '1rem', background: '#fff', borderRadius: '8px', boxShadow: '0 4px 20px rgba(0,0,0,0.05)', overflow: 'hidden' }}>
             <table className="admin-table" style={{ minWidth: 'auto' }}>

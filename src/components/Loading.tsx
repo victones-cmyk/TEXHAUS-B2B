@@ -10,7 +10,7 @@ export function Loading({ type = 'spinner', lines = 4 }: LoadingProps) {
         <div className="skeleton-line" style={{ width: '60%', height: '2rem', marginBottom: '2rem' }} />
         <div className="skeleton-line" style={{ width: '100%', height: '300px', marginBottom: '2rem' }} />
         {Array.from({ length: lines }).map((_, i) => (
-          <div key={i} className="skeleton-line" style={{ width: `${80 + Math.random() * 20}%`, marginBottom: '1rem' }} />
+          <div key={i} className="skeleton-line" style={{ width: `${85 + (i * 5) % 15}%`, marginBottom: '1rem' }} />
         ))}
       </div>
     );

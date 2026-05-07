@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { supabase } from '../../lib/supabase';
+import { api } from '../../lib/api';
 import { useToast } from '../../contexts/ToastContext';
 import type { Product, ProductVariation } from '../../types';
 
@@ -34,18 +34,10 @@ export function ProductModal({ product, onClose }: ProductModalProps) {
   const galleryInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    supabase.from('categories').select('*')
-      .then(({ data, error }) => {
-        if (!error && data) setCategories(data);
-      });
+    api<Category[]>('/categories').then(setCategories).catch(() => {});
 
     if (product) {
-      supabase.from('product_variations').select('*')
-        .eq('product_id', product.id)
-        .order('sort_order')
-        .then(({ data, error }) => {
-          if (!error && data) setVariations(data);
-        });
+      api<ProductVariation[]>(`/products/${product.id}/variations`).then(setVariations).catch(() => {});
     }
   }, [product]);
 
@@ -124,18 +116,26 @@ export function ProductModal({ product, onClose }: ProductModalProps) {
     };
 
     try {
+      let productId: string;
+
       if (product) {
-        const { error } = await supabase.from('products').update(payload).eq('id', product.id);
-        if (error) throw error;
-        await saveVariations(product.id);
+        const updated = await api<Product>(`/products/${product.id}`, {
+          method: 'PUT',
+          body: JSON.stringify(payload),
+        });
+        productId = updated.id;
       } else {
-        const { data, error } = await supabase.from('products').insert([payload]).select().single();
-        if (error) throw error;
-        await saveVariations(data.id);
+        const created = await api<Product>('/products', {
+          method: 'POST',
+          body: JSON.stringify(payload),
+        });
+        productId = created.id;
       }
+
+      await saveVariations(productId);
       toast(product ? 'Produto atualizado!' : 'Produto criado!', 'success');
       onClose(true);
-    } catch (err: unknown) {
+    } catch (err) {
       toast(err instanceof Error ? err.message : 'Erro ao salvar', 'error');
     } finally {
       setLoading(false);
@@ -143,26 +143,19 @@ export function ProductModal({ product, onClose }: ProductModalProps) {
   };
 
   const saveVariations = async (productId: string) => {
-    const existing = variations.filter(v => !v.id.startsWith('new-'));
-    const newOnes = variations.filter(v => v.id.startsWith('new-'));
-
-    if (existing.length > 0) {
-      await supabase.from('product_variations').delete().eq('product_id', productId);
-    }
-
-    if (existing.length > 0 || newOnes.length > 0) {
-      const all = [...existing, ...newOnes].map((v, i) => ({
-        product_id: productId,
-        name: v.name,
-        sku: v.sku,
-        price_modifier: v.price_modifier,
-        stock_quantity: v.stock_quantity,
-        image_url: v.image_url,
-        sort_order: i,
-      }));
-      const { error } = await supabase.from('product_variations').insert(all);
-      if (error) throw error;
-    }
+    const all = variations.map((v, i) => ({
+      product_id: productId,
+      name: v.name,
+      sku: v.sku,
+      price_modifier: v.price_modifier,
+      stock_quantity: v.stock_quantity,
+      image_url: v.image_url,
+      sort_order: i,
+    }));
+    await api(`/products/${productId}/variations`, {
+      method: 'PUT',
+      body: JSON.stringify(all),
+    });
   };
 
   return (

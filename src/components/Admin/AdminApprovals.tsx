@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { supabase } from '../../lib/supabase';
+import { api } from '../../lib/api';
 import { useAuth } from '../../contexts/AuthContext';
 import { useToast } from '../../contexts/ToastContext';
 import type { Profile } from '../../contexts/AuthContext';
@@ -10,49 +10,46 @@ export function AdminApprovals() {
   const { refreshProfile } = useAuth();
   const { toast } = useToast();
 
+  const fetchUsers = async () => {
+    setLoading(true);
+    try {
+      const data = await api<Profile[]>('/profiles');
+      setUsers(data);
+    } catch (err) {
+      console.error('Error fetching users:', err);
+    }
+    setLoading(false);
+  };
+
   useEffect(() => {
-    supabase
-      .from('profiles')
-      .select('*')
-      .neq('role', 'admin')
-      .order('created_at', { ascending: false })
-      .then(({ data, error }) => {
-        if (error) {
-          console.error('Error fetching users:', error);
-        } else {
-          setUsers(data || []);
-        }
-        setLoading(false);
-      });
+    fetchUsers();
   }, []);
 
   const handleApprove = async (id: string) => {
-    const { error } = await supabase
-      .from('profiles')
-      .update({ role: 'b2b_approved' })
-      .eq('id', id);
-
-    if (!error) {
+    try {
+      await api(`/profiles/${id}/role`, {
+        method: 'PUT',
+        body: JSON.stringify({ role: 'b2b_approved' }),
+      });
       setUsers(users.map(u => u.id === id ? { ...u, role: 'b2b_approved' } : u));
       refreshProfile();
       toast('Parceiro aprovado com sucesso!', 'success');
-    } else {
-      toast('Erro ao aprovar: ' + error.message, 'error');
+    } catch (err) {
+      toast('Erro ao aprovar: ' + (err instanceof Error ? err.message : ''), 'error');
     }
   };
 
   const handleReject = async (id: string) => {
-    const { error } = await supabase
-      .from('profiles')
-      .update({ role: 'b2b_rejected' })
-      .eq('id', id);
-
-    if (!error) {
+    try {
+      await api(`/profiles/${id}/role`, {
+        method: 'PUT',
+        body: JSON.stringify({ role: 'b2b_rejected' }),
+      });
       setUsers(users.map(u => u.id === id ? { ...u, role: 'b2b_rejected' } : u));
       refreshProfile();
       toast('Parceiro rejeitado.', 'info');
-    } else {
-      toast('Erro ao rejeitar: ' + error.message, 'error');
+    } catch (err) {
+      toast('Erro ao rejeitar: ' + (err instanceof Error ? err.message : ''), 'error');
     }
   };
 

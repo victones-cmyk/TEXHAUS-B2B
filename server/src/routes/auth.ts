@@ -33,7 +33,7 @@ router.post('/register', async (req: AuthRequest, res: Response) => {
     const token = generateToken(user);
 
     res.status(201).json({ token, user });
-  } catch (err: any) {
+  } catch (err: unknown) {
     console.error('Register error:', err);
     res.status(500).json({ message: 'Erro ao cadastrar' });
   }
@@ -72,7 +72,7 @@ router.post('/login', async (req: AuthRequest, res: Response) => {
       token,
       user: { id: user.id, email: user.email, role: user.role },
     });
-  } catch (err: any) {
+  } catch (err: unknown) {
     console.error('Login error:', err);
     res.status(500).json({ message: 'Erro ao fazer login' });
   }
@@ -93,7 +93,7 @@ router.get('/me', requireAuth, async (req: AuthRequest, res: Response) => {
     }
 
     res.json(result.rows[0]);
-  } catch (err: any) {
+  } catch (err: unknown) {
     console.error('Me error:', err);
     res.status(500).json({ message: 'Erro ao buscar perfil' });
   }

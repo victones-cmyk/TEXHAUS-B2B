@@ -8,7 +8,7 @@ router.get('/', requireAdmin, async (_req: AuthRequest, res: Response) => {
   try {
     const result = await query('SELECT * FROM orders ORDER BY created_at DESC');
     res.json(result.rows);
-  } catch (err: any) {
+  } catch (err: unknown) {
     console.error('Orders list error:', err);
     res.status(500).json({ message: 'Erro ao listar pedidos' });
   }
@@ -31,7 +31,7 @@ router.post('/', requireAuth, async (req: AuthRequest, res: Response) => {
     );
     const profile = profileResult.rows[0];
 
-    const total = items.reduce((sum: number, item: any) => sum + item.unit_price * item.quantity, 0);
+    const total = items.reduce((sum: number, item: { unit_price: number; quantity: number }) => sum + item.unit_price * item.quantity, 0);
 
     const shippingAddr = [
       profile.address_street, profile.address_number,
@@ -49,11 +49,11 @@ router.post('/', requireAuth, async (req: AuthRequest, res: Response) => {
 
     const orderId = orderResult.rows[0].id;
 
-    const itemValues = items.map((item: any, i: number) =>
+    const itemValues = items.map((item: { product_id: string; product_name: string; product_sku: string; quantity: number; unit_price: number }, i: number) =>
       `($${i * 6 + 1}, $${i * 6 + 2}, $${i * 6 + 3}, $${i * 6 + 4}, $${i * 6 + 5}, $${i * 6 + 6})`,
     ).join(', ');
 
-    const itemParams = items.flatMap((item: any) => [
+    const itemParams = items.flatMap((item: { product_id: string; product_name: string; product_sku: string; quantity: number; unit_price: number }) => [
       orderId, item.product_id, item.product_name, item.product_sku || '', item.quantity, item.unit_price,
     ]);
 
@@ -63,7 +63,7 @@ router.post('/', requireAuth, async (req: AuthRequest, res: Response) => {
     );
 
     res.status(201).json({ id: orderId, message: 'Pedido criado com sucesso' });
-  } catch (err: any) {
+  } catch (err: unknown) {
     console.error('Order create error:', err);
     res.status(500).json({ message: 'Erro ao criar pedido' });
   } finally {
@@ -83,7 +83,7 @@ router.get('/:id', requireAuth, async (req: AuthRequest, res: Response) => {
     }
     const items = await query('SELECT * FROM order_items WHERE order_id = $1', [req.params.id]);
     res.json({ ...result.rows[0], items: items.rows });
-  } catch (err: any) {
+  } catch (err: unknown) {
     console.error('Order detail error:', err);
     res.status(500).json({ message: 'Erro ao buscar pedido' });
   }
@@ -101,7 +101,7 @@ router.put('/:id/status', requireAdmin, async (req: AuthRequest, res: Response) 
       return;
     }
     res.json(result.rows[0]);
-  } catch (err: any) {
+  } catch (err: unknown) {
     console.error('Order status error:', err);
     res.status(500).json({ message: 'Erro ao atualizar status' });
   }

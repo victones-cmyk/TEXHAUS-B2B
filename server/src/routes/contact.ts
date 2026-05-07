@@ -15,7 +15,7 @@ router.post('/', async (req: Request, res: Response) => {
       [name, email, phone || '', subject || '', message],
     );
     res.status(201).json({ message: 'Mensagem enviada com sucesso' });
-  } catch (err: any) {
+  } catch (err: unknown) {
     console.error('Contact error:', err);
     res.status(500).json({ message: 'Erro ao enviar mensagem' });
   }

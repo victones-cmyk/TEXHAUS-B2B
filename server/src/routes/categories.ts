@@ -8,7 +8,7 @@ router.get('/', async (_req: Request, res: Response) => {
   try {
     const result = await query('SELECT * FROM categories ORDER BY sort_order');
     res.json(result.rows);
-  } catch (err: any) {
+  } catch (err: unknown) {
     console.error('Categories list error:', err);
     res.status(500).json({ message: 'Erro ao listar categorias' });
   }
@@ -26,9 +26,9 @@ router.post('/', requireAdmin, async (req: AuthRequest, res: Response) => {
       [name.trim(), slug.trim().toLowerCase().replace(/\s+/g, '-'), parent_id || null],
     );
     res.status(201).json(result.rows[0]);
-  } catch (err: any) {
+  } catch (err: unknown) {
     console.error('Category create error:', err);
-    res.status(500).json({ message: err.message || 'Erro ao criar categoria' });
+    res.status(500).json({ message: err instanceof Error ? err.message : 'Erro ao criar categoria' });
   }
 });
 
@@ -44,9 +44,9 @@ router.put('/:id', requireAdmin, async (req: AuthRequest, res: Response) => {
       return;
     }
     res.json(result.rows[0]);
-  } catch (err: any) {
+  } catch (err: unknown) {
     console.error('Category update error:', err);
-    res.status(500).json({ message: err.message || 'Erro ao atualizar categoria' });
+    res.status(500).json({ message: err instanceof Error ? err.message : 'Erro ao atualizar categoria' });
   }
 });
 
@@ -63,7 +63,7 @@ router.delete('/:id', requireAdmin, async (req: AuthRequest, res: Response) => {
       return;
     }
     res.json({ message: 'Categoria excluída' });
-  } catch (err: any) {
+  } catch (err: unknown) {
     console.error('Category delete error:', err);
     res.status(500).json({ message: 'Erro ao excluir categoria' });
   }

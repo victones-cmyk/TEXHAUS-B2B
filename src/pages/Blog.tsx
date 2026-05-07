@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { supabase } from '../lib/supabase';
+import { api } from '../lib/api';
 import { Navbar } from '../components/Navbar';
 import { Footer } from '../components/Footer';
 import { SEO } from '../components/SEO';
@@ -21,14 +21,10 @@ export function Blog() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    supabase
-      .from('posts')
-      .select('*')
-      .order('created_at', { ascending: false })
-      .then(({ data, error }) => {
-        if (!error && data) setPosts(data);
-        setLoading(false);
-      });
+    api<Post[]>('/posts')
+      .then(setPosts)
+      .catch(() => {})
+      .finally(() => setLoading(false));
   }, []);
 
   return (

@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
 import { Link } from 'react-router-dom';
-import { supabase } from '../lib/supabase';
+import { api } from '../lib/api';
 import { useAuth } from '../contexts/AuthContext';
 import { useCart } from '../contexts/CartContext';
 import { useToast } from '../contexts/ToastContext';
@@ -9,6 +9,12 @@ import { Footer } from '../components/Footer';
 import { SEO } from '../components/SEO';
 import { Loading } from '../components/Loading';
 import type { Product } from '../types';
+
+interface Category {
+  id: string;
+  name: string;
+  parent_id: string | null;
+}
 
 export function Catalog() {
   const { isLoggedIn, isB2BApproved } = useAuth();
@@ -21,26 +27,22 @@ export function Catalog() {
   const [search, setSearch] = useState('');
 
   useEffect(() => {
-    supabase
-      .from('products')
-      .select('*')
-      .eq('status', 'published')
-      .order('created_at', { ascending: false })
-      .then(({ data, error }) => {
-        if (!error && data) setProducts(data);
-        setLoading(false);
-      });
+    api<Product[]>('/products/published')
+      .then(setProducts)
+      .catch(() => {})
+      .finally(() => setLoading(false));
   }, []);
 
-  const [catTree, setCatTree] = useState<{ id: string; name: string; parent_id: string | null }[]>([]);
+  const [catTree, setCatTree] = useState<Category[]>([]);
   const categories = useMemo(() => {
     const cats = new Set(products.map(p => p.category));
     return ['Todas', ...Array.from(cats).sort()];
   }, [products]);
 
   useEffect(() => {
-    supabase.from('categories').select('*').order('sort_order')
-      .then(({ data }) => { if (data) setCatTree(data); });
+    api<Category[]>('/categories')
+      .then(data => { if (data) setCatTree(data); })
+      .catch(() => {});
   }, []);
 
   const filtered = useMemo(() => {
@@ -63,7 +65,7 @@ export function Catalog() {
       case 'price-asc': result.sort((a, b) => a.price - b.price); break;
       case 'price-desc': result.sort((a, b) => b.price - a.price); break;
       case 'name': result.sort((a, b) => a.name.localeCompare(b.name)); break;
-      case 'newest': break; // already sorted
+      case 'newest': break;
     }
 
     return result;

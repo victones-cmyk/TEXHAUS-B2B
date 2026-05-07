@@ -1,8 +1,7 @@
 /* eslint-disable react-refresh/only-export-components */
 import { createContext, useContext, useEffect, useState } from 'react';
 import type { ReactNode } from 'react';
-import { supabase } from '../lib/supabase';
-import type { User } from '@supabase/supabase-js';
+import { api, setToken, getToken } from '../lib/api';
 
 export interface Profile {
   id: string;
@@ -16,6 +15,12 @@ export interface Profile {
   state: string;
   role: 'admin' | 'b2b_pending' | 'b2b_approved' | 'b2b_rejected';
   created_at: string;
+}
+
+export interface User {
+  id: string;
+  email: string;
+  role: string;
 }
 
 interface SignUpData {
@@ -56,127 +61,77 @@ const AuthContext = createContext<AuthContextType>({
   refreshProfile: async () => {},
 });
 
-async function ensureProfile(userId: string, email?: string): Promise<Profile | null> {
-  const { data: existing, error: fetchError } = await supabase
-    .from('profiles')
-    .select('*')
-    .eq('id', userId)
-    .maybeSingle();
-
-  if (existing) {
-    return existing as Profile;
-  }
-
-  if (fetchError) {
-    console.error('Erro ao buscar perfil:', fetchError);
-    return null;
-  }
-
-  // Profile doesn't exist — create one automatically
-  const newProfile = {
-    id: userId,
-    email: email || '',
-    full_name: '',
-    company_name: '',
-    cnpj: '',
-    phone: '',
-    customer_type: '',
-    city: '',
-    state: '',
-    role: 'b2b_pending' as const,
-  };
-
-  const { error: insertError } = await supabase.from('profiles').insert([newProfile]);
-
-  if (insertError) {
-    console.error('Erro ao criar perfil automaticamente:', insertError);
-    return null;
-  }
-
-  return newProfile as Profile;
-}
-
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
 
-  const loadProfile = async (u: User) => {
-    const p = await ensureProfile(u.id, u.email);
-    setProfile(p);
+  const loadProfile = async () => {
+    try {
+      const p = await api<Profile>('/auth/me');
+      setProfile(p);
+    } catch {
+      setProfile(null);
+    }
   };
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      const u = session?.user ?? null;
-      setUser(u);
-      if (u) {
-        loadProfile(u);
-      }
+    const token = getToken();
+    if (token) {
+      api<User>('/auth/me')
+        .then((u) => {
+          setUser(u);
+          return loadProfile();
+        })
+        .catch(() => {
+          setToken(null);
+          setUser(null);
+          setProfile(null);
+        })
+        .finally(() => setLoading(false));
+    } else {
       setLoading(false);
-    });
-
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      const u = session?.user ?? null;
-      setUser(u);
-      if (u) {
-        loadProfile(u);
-      } else {
-        setProfile(null);
-      }
-    });
-
-    return () => subscription.unsubscribe();
+    }
   }, []);
 
   const signIn = async (email: string, password: string): Promise<string | null> => {
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
-    return error?.message ?? null;
+    try {
+      const data = await api<{ token: string; user: User }>('/auth/login', {
+        method: 'POST',
+        body: JSON.stringify({ email, password }),
+      });
+      setToken(data.token);
+      setUser(data.user);
+      await loadProfile();
+      return null;
+    } catch (err) {
+      return err instanceof Error ? err.message : 'Erro ao fazer login';
+    }
   };
 
   const signUp = async (data: SignUpData): Promise<string | null> => {
-    const { error: signUpError, data: authData } = await supabase.auth.signUp({
-      email: data.email,
-      password: data.password,
-    });
-
-    if (signUpError) return signUpError.message;
-    if (!authData.user) return 'Erro ao criar usuário.';
-
-    const { error: profileError } = await supabase.from('profiles').insert([
-      {
-        id: authData.user.id,
-        email: data.email,
-        full_name: data.fullName,
-        company_name: data.companyName,
-        cnpj: data.cnpj,
-        phone: data.phone,
-        customer_type: data.customerType,
-        city: data.city,
-        state: data.state,
-        role: 'b2b_pending',
-      },
-    ]);
-
-    if (profileError) {
-      console.error('Erro ao criar perfil no cadastro:', profileError);
-      return 'Erro ao criar perfil. Verifique se a tabela profiles existe no Supabase.';
+    try {
+      const res = await api<{ token: string; user: User }>('/auth/register', {
+        method: 'POST',
+        body: JSON.stringify(data),
+      });
+      setToken(res.token);
+      setUser(res.user);
+      await loadProfile();
+      return null;
+    } catch (err) {
+      return err instanceof Error ? err.message : 'Erro ao cadastrar';
     }
-
-    return null;
   };
 
   const signOut = async () => {
-    await supabase.auth.signOut();
+    setToken(null);
     setUser(null);
     setProfile(null);
   };
 
   const refreshProfile = async () => {
-    if (user) {
-      const p = await ensureProfile(user.id, user.email);
-      setProfile(p);
-    }
+    await loadProfile();
   };
 
   return (

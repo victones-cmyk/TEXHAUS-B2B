@@ -8,7 +8,7 @@ router.get('/', async (_req: Request, res: Response) => {
   try {
     const result = await query('SELECT * FROM products ORDER BY created_at DESC');
     res.json(result.rows);
-  } catch (err: any) {
+  } catch (err: unknown) {
     console.error('Products list error:', err);
     res.status(500).json({ message: 'Erro ao listar produtos' });
   }
@@ -18,7 +18,7 @@ router.get('/published', async (_req: Request, res: Response) => {
   try {
     const result = await query("SELECT * FROM products WHERE status = 'published' ORDER BY created_at DESC");
     res.json(result.rows);
-  } catch (err: any) {
+  } catch (err: unknown) {
     console.error('Products published error:', err);
     res.status(500).json({ message: 'Erro ao listar produtos' });
   }
@@ -32,7 +32,7 @@ router.get('/:id', async (req: Request, res: Response) => {
       return;
     }
     res.json(result.rows[0]);
-  } catch (err: any) {
+  } catch (err: unknown) {
     console.error('Product detail error:', err);
     res.status(500).json({ message: 'Erro ao buscar produto' });
   }
@@ -47,7 +47,7 @@ router.post('/', requireAdmin, async (req: AuthRequest, res: Response) => {
       [name, sku || '', category || '', price || 0, stock_quantity || 0, image_url || '', JSON.stringify(images || []), description || '', status || 'draft'],
     );
     res.status(201).json(result.rows[0]);
-  } catch (err: any) {
+  } catch (err: unknown) {
     console.error('Product create error:', err);
     res.status(500).json({ message: 'Erro ao criar produto' });
   }
@@ -66,7 +66,7 @@ router.put('/:id', requireAdmin, async (req: AuthRequest, res: Response) => {
       return;
     }
     res.json(result.rows[0]);
-  } catch (err: any) {
+  } catch (err: unknown) {
     console.error('Product update error:', err);
     res.status(500).json({ message: 'Erro ao atualizar produto' });
   }
@@ -81,7 +81,7 @@ router.delete('/:id', requireAdmin, async (req: AuthRequest, res: Response) => {
       return;
     }
     res.json({ message: 'Produto excluído' });
-  } catch (err: any) {
+  } catch (err: unknown) {
     console.error('Product delete error:', err);
     res.status(500).json({ message: 'Erro ao excluir produto' });
   }
@@ -96,7 +96,7 @@ router.get('/:id/variations', async (req: Request, res: Response) => {
       [req.params.id],
     );
     res.json(result.rows);
-  } catch (err: any) {
+  } catch (err: unknown) {
     console.error('Variations list error:', err);
     res.status(500).json({ message: 'Erro ao listar variações' });
   }
@@ -110,11 +110,11 @@ router.put('/:id/variations', requireAdmin, async (req: AuthRequest, res: Respon
     await query('DELETE FROM product_variations WHERE product_id = $1', [productId]);
 
     if (variations.length > 0) {
-      const values = variations.map((v: any, i: number) =>
+      const values = variations.map((v: { name: string; sku: string; price_modifier: number; stock_quantity: number; image_url: string; sort_order: number }, i: number) =>
         `($${i * 7 + 1}, $${i * 7 + 2}, $${i * 7 + 3}, $${i * 7 + 4}, $${i * 7 + 5}, $${i * 7 + 6}, $${i * 7 + 7})`,
       ).join(', ');
 
-      const params = variations.flatMap((v: any) => [
+      const params = variations.flatMap((v: { name: string; sku: string; price_modifier: number; stock_quantity: number; image_url: string; sort_order: number }) => [
         productId, v.name, v.sku || '', v.price_modifier || 0, v.stock_quantity || 0, v.image_url || '', v.sort_order || 0,
       ]);
 
@@ -125,7 +125,7 @@ router.put('/:id/variations', requireAdmin, async (req: AuthRequest, res: Respon
     }
 
     res.json({ message: 'Variações salvas' });
-  } catch (err: any) {
+  } catch (err: unknown) {
     console.error('Variations save error:', err);
     res.status(500).json({ message: 'Erro ao salvar variações' });
   }

@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { supabase } from '../../lib/supabase';
+import { api } from '../../lib/api';
 import { useToast } from '../../contexts/ToastContext';
 
 interface Category {
@@ -19,14 +19,18 @@ export function AdminCategories() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const { toast } = useToast();
 
-  useEffect(() => { fetchCategories(); }, []);
-
   const fetchCategories = async () => {
     setLoading(true);
-    const { data, error } = await supabase.from('categories').select('*').order('sort_order');
-    if (!error && data) setCategories(data);
+    try {
+      const data = await api<Category[]>('/categories');
+      setCategories(data);
+    } catch (err) {
+      console.error('Error fetching categories:', err);
+    }
     setLoading(false);
   };
+
+  useEffect(() => { fetchCategories(); }, []);
 
   const rootCategories = categories.filter(c => !c.parent_id);
   const getChildren = (parentId: string) => categories.filter(c => c.parent_id === parentId);
@@ -39,10 +43,10 @@ export function AdminCategories() {
 
     try {
       if (editingId) {
-        await supabase.from('categories').update(payload).eq('id', editingId);
+        await api(`/categories/${editingId}`, { method: 'PUT', body: JSON.stringify(payload) });
         toast('Categoria atualizada!', 'success');
       } else {
-        await supabase.from('categories').insert([payload]);
+        await api('/categories', { method: 'POST', body: JSON.stringify(payload) });
         toast('Categoria criada!', 'success');
       }
       setName(''); setSlug(''); setParentId(''); setEditingId(null);
@@ -61,9 +65,13 @@ export function AdminCategories() {
       toast('Exclua as subcategorias primeiro.', 'error');
       return;
     }
-    const { error } = await supabase.from('categories').delete().eq('id', id);
-    if (!error) { toast('Categoria excluída.', 'info'); fetchCategories(); }
-    else toast('Erro ao excluir.', 'error');
+    try {
+      await api(`/categories/${id}`, { method: 'DELETE' });
+      toast('Categoria excluída.', 'info');
+      fetchCategories();
+    } catch {
+      toast('Erro ao excluir.', 'error');
+    }
   };
 
   return (

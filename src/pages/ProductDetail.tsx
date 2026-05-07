@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { supabase } from '../lib/supabase';
+import { api } from '../lib/api';
 import { useAuth } from '../contexts/AuthContext';
 import { useCart } from '../contexts/CartContext';
 import { useToast } from '../contexts/ToastContext';
@@ -27,13 +27,13 @@ export function ProductDetail() {
   useEffect(() => {
     if (!id) return;
     Promise.all([
-      supabase.from('products').select('*').eq('id', id).eq('status', 'published').maybeSingle(),
-      supabase.from('product_variations').select('*').eq('product_id', id).order('sort_order'),
-    ]).then(([productRes, variationsRes]) => {
-      if (!productRes.error && productRes.data) {
-        setProduct(productRes.data);
-        setVariations(variationsRes.data || []);
-      }
+      api<Product>(`/products/${id}`),
+      api<ProductVariation[]>(`/products/${id}/variations`),
+    ]).then(([productData, variationsData]) => {
+      setProduct(productData);
+      setVariations(variationsData);
+      setLoading(false);
+    }).catch(() => {
       setLoading(false);
     });
   }, [id]);

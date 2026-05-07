@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { supabase } from '../lib/supabase';
+import { api } from '../lib/api';
 import { useAuth } from '../contexts/AuthContext';
 import { useCart } from '../contexts/CartContext';
 import { Navbar } from '../components/Navbar';
@@ -8,7 +8,7 @@ import { Footer } from '../components/Footer';
 import { SEO } from '../components/SEO';
 
 export function Checkout() {
-  const { user, profile, isLoggedIn, isB2BApproved } = useAuth();
+  const { profile, isLoggedIn, isB2BApproved } = useAuth();
   const { items, total, itemCount, clearCart } = useCart();
   const navigate = useNavigate();
   const [notes, setNotes] = useState('');
@@ -30,35 +30,7 @@ export function Checkout() {
     setSubmitting(true);
     setError('');
 
-    const orderTotal = items.reduce((sum, item) => {
-      const unitPrice = item.product.price + (item.variation?.price_modifier ?? 0);
-      return sum + unitPrice * item.quantity;
-    }, 0);
-
-    const { data: order, error: orderError } = await supabase
-      .from('orders')
-      .insert([{
-        user_id: user!.id,
-        status: 'pending',
-        total: orderTotal,
-        customer_name: profile?.full_name || '',
-        customer_email: profile?.email || user!.email || '',
-        customer_company: profile?.company_name || '',
-        customer_phone: profile?.phone || '',
-        shipping_address: `${profile?.city || ''}${profile?.city && profile?.state ? ', ' : ''}${profile?.state || ''}`,
-        notes,
-      }])
-      .select()
-      .single();
-
-    if (orderError || !order) {
-      setError(orderError?.message || 'Erro ao criar pedido.');
-      setSubmitting(false);
-      return;
-    }
-
     const orderItems = items.map(item => ({
-      order_id: order.id,
       product_id: item.product.id,
       product_name: `${item.product.name}${item.variation ? ` (${item.variation.name})` : ''}`,
       product_sku: item.variation?.sku || item.product.sku,
@@ -66,20 +38,18 @@ export function Checkout() {
       unit_price: item.product.price + (item.variation?.price_modifier ?? 0),
     }));
 
-    const { error: itemsError } = await supabase
-      .from('order_items')
-      .insert(orderItems);
-
-    if (itemsError) {
-      await supabase.from('orders').delete().eq('id', order.id);
-      setError(itemsError.message);
+    try {
+      await api('/orders', {
+        method: 'POST',
+        body: JSON.stringify({ items: orderItems, notes }),
+      });
+      clearCart();
+      setDone(true);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Erro ao criar pedido.');
+    } finally {
       setSubmitting(false);
-      return;
     }
-
-    clearCart();
-    setDone(true);
-    setSubmitting(false);
   };
 
   if (done) {

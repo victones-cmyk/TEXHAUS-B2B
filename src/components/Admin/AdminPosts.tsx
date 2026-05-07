@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { supabase } from '../../lib/supabase';
+import { api } from '../../lib/api';
 import { useToast } from '../../contexts/ToastContext';
 import { PostModal } from './PostModal';
 
@@ -20,31 +20,30 @@ export function AdminPosts() {
   const [editingPost, setEditingPost] = useState<Post | undefined>(undefined);
   const { toast } = useToast();
 
+  const fetchPosts = async () => {
+    setLoading(true);
+    try {
+      const data = await api<Post[]>('/posts');
+      setPosts(data);
+    } catch (err) {
+      console.error('Error fetching posts:', err);
+    }
+    setLoading(false);
+  };
+
   useEffect(() => {
     fetchPosts();
   }, []);
 
-  const fetchPosts = async () => {
-    setLoading(true);
-    const { data, error } = await supabase
-      .from('posts')
-      .select('*')
-      .order('created_at', { ascending: false });
-
-    if (!error && data) setPosts(data);
-    setLoading(false);
-  };
-
   const handleDelete = async (id: string) => {
     if (!window.confirm('Excluir este post?')) return;
 
-    const { error } = await supabase.from('posts').delete().eq('id', id);
-
-    if (error) {
-      toast('Erro ao excluir: ' + error.message, 'error');
-    } else {
+    try {
+      await api(`/posts/${id}`, { method: 'DELETE' });
       setPosts(posts.filter(p => p.id !== id));
       toast('Post excluído.', 'info');
+    } catch (err) {
+      toast('Erro ao excluir: ' + (err instanceof Error ? err.message : ''), 'error');
     }
   };
 

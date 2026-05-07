@@ -10,7 +10,7 @@ router.get('/', requireAdmin, async (_req: AuthRequest, res: Response) => {
       "SELECT id, email, full_name, company_name, cnpj, phone, customer_type, city, state, cep, address_street, address_number, address_complement, address_neighborhood, role, created_at FROM profiles WHERE role != 'admin' ORDER BY created_at DESC",
     );
     res.json(result.rows);
-  } catch (err: any) {
+  } catch (err: unknown) {
     console.error('Profiles list error:', err);
     res.status(500).json({ message: 'Erro ao listar perfis' });
   }
@@ -28,7 +28,7 @@ router.put('/:id/role', requireAdmin, async (req: AuthRequest, res: Response) =>
       return;
     }
     res.json(result.rows[0]);
-  } catch (err: any) {
+  } catch (err: unknown) {
     console.error('Profile role error:', err);
     res.status(500).json({ message: 'Erro ao atualizar perfil' });
   }

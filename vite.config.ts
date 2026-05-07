@@ -47,4 +47,13 @@ const localUploadPlugin = () => ({
 // https://vite.dev/config/
 export default defineConfig({
   plugins: [react(), localUploadPlugin()],
+  server: {
+    allowedHosts: ['b2b.victones.com.br'],
+    proxy: {
+      '/api': {
+        target: 'http://localhost:3001',
+        changeOrigin: true,
+      },
+    },
+  },
 })

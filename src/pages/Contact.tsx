@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { supabase } from '../lib/supabase';
+import { api } from '../lib/api';
 import { Navbar } from '../components/Navbar';
 import { Footer } from '../components/Footer';
 import { SEO } from '../components/SEO';
@@ -20,16 +20,17 @@ export function Contact() {
     setSubmitting(true);
     setError('');
 
-    const { error: insertError } = await supabase
-      .from('contact_submissions')
-      .insert([{ ...formData, created_at: new Date().toISOString() }]);
-
-    if (insertError) {
-      setError('Erro ao enviar mensagem. Tente novamente.');
-    } else {
+    try {
+      await api('/contact', {
+        method: 'POST',
+        body: JSON.stringify(formData),
+      });
       setSubmitted(true);
+    } catch {
+      setError('Erro ao enviar mensagem. Tente novamente.');
+    } finally {
+      setSubmitting(false);
     }
-    setSubmitting(false);
   };
 
   return (

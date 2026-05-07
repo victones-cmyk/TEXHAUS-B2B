@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { supabase } from '../../lib/supabase';
+import { api } from '../../lib/api';
 import { useToast } from '../../contexts/ToastContext';
 import { ProductModal } from './ProductModal';
 import type { Product } from '../../types';
@@ -11,19 +11,19 @@ export function AdminProducts() {
   const [editingProduct, setEditingProduct] = useState<Product | undefined>(undefined);
   const { toast } = useToast();
 
+  const fetchProducts = async () => {
+    setLoading(true);
+    try {
+      const data = await api<Product[]>('/products');
+      setProducts(data);
+    } catch (err) {
+      console.error('Error fetching products:', err);
+    }
+    setLoading(false);
+  };
+
   useEffect(() => {
-    supabase
-      .from('products')
-      .select('*')
-      .order('created_at', { ascending: false })
-      .then(({ data, error }) => {
-        if (error) {
-          console.error('Error fetching products:', error);
-        } else {
-          setProducts(data || []);
-        }
-        setLoading(false);
-      });
+    fetchProducts();
   }, []);
 
   const handleEdit = (product: Product) => {
@@ -34,33 +34,19 @@ export function AdminProducts() {
   const handleDelete = async (id: string) => {
     if (!window.confirm('Tem certeza que deseja excluir este produto?')) return;
 
-    const { error } = await supabase
-      .from('products')
-      .delete()
-      .eq('id', id);
-
-    if (error) {
-      toast('Erro ao excluir: ' + error.message, 'error');
-    } else {
+    try {
+      await api(`/products/${id}`, { method: 'DELETE' });
       setProducts(products.filter(p => p.id !== id));
       toast('Produto excluído.', 'info');
+    } catch (err) {
+      toast('Erro ao excluir: ' + (err instanceof Error ? err.message : ''), 'error');
     }
   };
 
   const handleModalClose = (saved: boolean) => {
     setIsModalOpen(false);
     setEditingProduct(undefined);
-    if (saved) {
-      setLoading(true);
-      supabase
-        .from('products')
-        .select('*')
-        .order('created_at', { ascending: false })
-        .then(({ data, error }) => {
-          if (!error) setProducts(data || []);
-          setLoading(false);
-        });
-    }
+    if (saved) fetchProducts();
   };
 
   return (

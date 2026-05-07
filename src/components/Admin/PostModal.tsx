@@ -1,5 +1,5 @@
 import { useState, useRef } from 'react';
-import { supabase } from '../../lib/supabase';
+import { api } from '../../lib/api';
 import { useToast } from '../../contexts/ToastContext';
 
 interface Post {
@@ -53,15 +53,13 @@ export function PostModal({ post, onClose }: PostModalProps) {
 
     try {
       if (post) {
-        const { error } = await supabase.from('posts').update(payload).eq('id', post.id);
-        if (error) throw error;
+        await api(`/posts/${post.id}`, { method: 'PUT', body: JSON.stringify(payload) });
       } else {
-        const { error } = await supabase.from('posts').insert([payload]);
-        if (error) throw error;
+        await api('/posts', { method: 'POST', body: JSON.stringify(payload) });
       }
       toast(post ? 'Post atualizado!' : 'Post criado!', 'success');
       onClose(true);
-    } catch (err: unknown) {
+    } catch (err) {
       toast(err instanceof Error ? err.message : 'Erro ao salvar post', 'error');
     } finally {
       setLoading(false);
