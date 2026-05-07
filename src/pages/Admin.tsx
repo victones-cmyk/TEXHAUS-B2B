@@ -1,64 +1,36 @@
-import { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
-import { supabase } from '../lib/supabase';
-
-interface B2BUser {
-  id: string;
-  full_name: string;
-  company_name: string;
-  cnpj: string;
-  email: string;
-  status: 'pending' | 'approved' | 'rejected';
-  created_at: string;
-}
+import { useEffect } from 'react';
+import { Link, Routes, Route, useLocation, useNavigate } from 'react-router-dom';
+import { useAuth } from '../contexts/AuthContext';
+import { AdminApprovals } from '../components/Admin/AdminApprovals';
+import { AdminProducts } from '../components/Admin/AdminProducts';
+import { AdminOrders } from '../components/Admin/AdminOrders';
+import { AdminPosts } from '../components/Admin/AdminPosts';
 
 export function Admin() {
-  const [users, setUsers] = useState<B2BUser[]>([]);
-  const [loading, setLoading] = useState(true);
+  const { isAdmin, loading, signOut } = useAuth();
+  const location = useLocation();
+  const navigate = useNavigate();
 
   useEffect(() => {
-    fetchUsers();
-  }, []);
-
-  const fetchUsers = async () => {
-    setLoading(true);
-    const { data, error } = await supabase
-      .from('b2b_registrations')
-      .select('*')
-      .order('created_at', { ascending: false });
-
-    if (error) {
-      console.error('Error fetching users:', error);
-    } else {
-      setUsers(data || []);
+    if (!loading && !isAdmin) {
+      navigate('/', { replace: true });
     }
-    setLoading(false);
-  };
+  }, [isAdmin, loading, navigate]);
 
-  const handleApprove = async (id: string) => {
-    const { error } = await supabase
-      .from('b2b_registrations')
-      .update({ status: 'approved' })
-      .eq('id', id);
+  if (loading) {
+    return (
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '100vh' }}>
+        <p>Carregando...</p>
+      </div>
+    );
+  }
 
-    if (!error) {
-      setUsers(users.map(u => u.id === id ? { ...u, status: 'approved' } : u));
-    } else {
-      alert('Erro ao aprovar: ' + error.message);
-    }
-  };
+  if (!isAdmin) return null;
 
-  const handleReject = async (id: string) => {
-    const { error } = await supabase
-      .from('b2b_registrations')
-      .update({ status: 'rejected' })
-      .eq('id', id);
-
-    if (!error) {
-      setUsers(users.map(u => u.id === id ? { ...u, status: 'rejected' } : u));
-    } else {
-      alert('Erro ao rejeitar: ' + error.message);
-    }
+  const getActiveClass = (path: string) => {
+    if (path === '/admin' && location.pathname === '/admin') return 'active';
+    if (path !== '/admin' && location.pathname.startsWith(path)) return 'active';
+    return '';
   };
 
   return (
@@ -68,75 +40,26 @@ export function Admin() {
           TEXHAUS<span>.</span> <span className="admin-badge">ADMIN</span>
         </div>
         <nav className="admin-nav">
-          <a href="#" className="active">Aprovação B2B</a>
-          <a href="#">Produtos</a>
-          <a href="#">Pedidos</a>
-          <a href="#">Configurações</a>
+          <Link to="/admin" className={getActiveClass('/admin')}>Aprovação B2B</Link>
+          <Link to="/admin/products" className={getActiveClass('/admin/products')}>Produtos</Link>
+          <Link to="/admin/orders" className={getActiveClass('/admin/orders')}>Pedidos</Link>
+          <Link to="/admin/blog" className={getActiveClass('/admin/blog')}>Blog</Link>
         </nav>
-        <Link to="/" className="btn-logout-admin">
-          ← Voltar para a Loja
-        </Link>
-      </aside>
-      
-      <main className="admin-main">
-        <header className="admin-header">
-          <h2>Gestão de Parceiros B2B</h2>
-          <p>Aprove ou rejeite solicitações de acesso ao catálogo de preços.</p>
-        </header>
-
-        <div className="admin-content">
-          <div className="table-container">
-            <table className="admin-table">
-              <thead>
-                <tr>
-                  <th>Data</th>
-                  <th>Empresa / Cliente</th>
-                  <th>CNPJ</th>
-                  <th>E-mail</th>
-                  <th>Status</th>
-                  <th>Ações</th>
-                </tr>
-              </thead>
-              <tbody>
-                {loading ? (
-                  <tr>
-                    <td colSpan={6} style={{ textAlign: 'center', padding: '2rem' }}>Carregando dados reais do Supabase...</td>
-                  </tr>
-                ) : users.length === 0 ? (
-                  <tr>
-                    <td colSpan={6} style={{ textAlign: 'center', padding: '2rem' }}>Nenhum cadastro encontrado.</td>
-                  </tr>
-                ) : (
-                  users.map(user => (
-                    <tr key={user.id}>
-                      <td>{new Date(user.created_at).toLocaleDateString('pt-BR')}</td>
-                      <td>
-                        <strong>{user.company_name}</strong><br/>
-                        <small>{user.full_name}</small>
-                      </td>
-                      <td>{user.cnpj}</td>
-                      <td>{user.email}</td>
-                      <td>
-                        <span className={`status-badge ${user.status}`}>
-                          {user.status === 'pending' ? 'Aguardando' : user.status === 'approved' ? 'Aprovado' : 'Rejeitado'}
-                        </span>
-                      </td>
-                      <td>
-                        {user.status === 'pending' && (
-                          <div className="action-buttons">
-                            <button className="btn-approve" onClick={() => handleApprove(user.id)}>Aprovar</button>
-                            <button className="btn-reject" onClick={() => handleReject(user.id)}>Recusar</button>
-                          </div>
-                        )}
-                        {user.status !== 'pending' && <span className="action-done">—</span>}
-                      </td>
-                    </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
-          </div>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+          <Link to="/" className="btn-logout-admin">← Voltar para a Loja</Link>
+          <button onClick={signOut} className="btn-logout-admin" style={{ border: 'none', background: 'none', cursor: 'pointer', color: '#f44336' }}>
+            Sair da Conta
+          </button>
         </div>
+      </aside>
+
+      <main className="admin-main">
+        <Routes>
+          <Route path="/" element={<AdminApprovals />} />
+          <Route path="products" element={<AdminProducts />} />
+          <Route path="orders" element={<AdminOrders />} />
+          <Route path="blog" element={<AdminPosts />} />
+        </Routes>
       </main>
     </div>
   );
