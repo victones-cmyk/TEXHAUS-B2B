@@ -1,8 +1,14 @@
 import { Request, Response, NextFunction } from 'express';
-import jwt from 'jsonwebtoken';
+import jwt, { type JwtPayload } from 'jsonwebtoken';
 
 
-const JWT_SECRET = process.env.JWT_SECRET || 'fallback-dev-secret';
+const rawJwtSecret = process.env.JWT_SECRET;
+
+if (!rawJwtSecret) {
+  throw new Error('JWT_SECRET não configurado nas variáveis de ambiente.');
+}
+
+const JWT_SECRET: string = rawJwtSecret;
 
 export interface AuthUser {
   id: string;
@@ -23,8 +29,25 @@ export async function requireAuth(req: AuthRequest, res: Response, next: NextFun
     }
 
     const token = header.slice(7);
-    const decoded = jwt.verify(token, JWT_SECRET) as AuthUser;
-    req.user = decoded;
+    const decoded = jwt.verify(token, JWT_SECRET);
+
+    if (typeof decoded !== 'object' || decoded === null) {
+      res.status(401).json({ message: 'Token inválido ou expirado' });
+      return;
+    }
+
+    const payload = decoded as JwtPayload & Partial<AuthUser>;
+
+    if (!payload.id || !payload.email || !payload.role) {
+      res.status(401).json({ message: 'Token inválido ou expirado' });
+      return;
+    }
+
+    req.user = {
+      id: String(payload.id),
+      email: String(payload.email),
+      role: String(payload.role),
+    };
     next();
   } catch {
     res.status(401).json({ message: 'Token inválido ou expirado' });

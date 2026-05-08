@@ -6,6 +6,9 @@ import { AdminProducts } from '../components/Admin/AdminProducts';
 import { AdminOrders } from '../components/Admin/AdminOrders';
 import { AdminPosts } from '../components/Admin/AdminPosts';
 import { AdminCategories } from '../components/Admin/AdminCategories';
+import { AdminShipping } from '../components/Admin/AdminShipping';
+import { AdminPayments } from '../components/Admin/AdminPayments';
+import { AdminClients } from '../components/Admin/AdminClients';
 
 export function Admin() {
   const { isAdmin, loading, signOut } = useAuth();
@@ -42,10 +45,13 @@ export function Admin() {
         </div>
         <nav className="admin-nav">
           <Link to="/admin" className={getActiveClass('/admin')}>Aprovação B2B</Link>
+          <Link to="/admin/clients" className={getActiveClass('/admin/clients')}>Clientes</Link>
           <Link to="/admin/products" className={getActiveClass('/admin/products')}>Produtos</Link>
           <Link to="/admin/orders" className={getActiveClass('/admin/orders')}>Pedidos</Link>
           <Link to="/admin/blog" className={getActiveClass('/admin/blog')}>Blog</Link>
           <Link to="/admin/categories" className={getActiveClass('/admin/categories')}>Categorias</Link>
+          <Link to="/admin/shipping" className={getActiveClass('/admin/shipping')}>Frete</Link>
+          <Link to="/admin/payments" className={getActiveClass('/admin/payments')}>Pagamentos</Link>
         </nav>
         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
           <Link to="/" className="btn-logout-admin">← Voltar para a Loja</Link>
@@ -58,10 +64,13 @@ export function Admin() {
       <main className="admin-main">
         <Routes>
           <Route path="/" element={<AdminApprovals />} />
+          <Route path="clients" element={<AdminClients />} />
           <Route path="products" element={<AdminProducts />} />
           <Route path="orders" element={<AdminOrders />} />
           <Route path="blog" element={<AdminPosts />} />
           <Route path="categories" element={<AdminCategories />} />
+          <Route path="shipping" element={<AdminShipping />} />
+          <Route path="payments" element={<AdminPayments />} />
         </Routes>
       </main>
     </div>

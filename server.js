@@ -8,12 +8,15 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const app = express();
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT || 5101;
 
 const uploadsDir = path.resolve(__dirname, 'uploads');
 if (!fs.existsSync(uploadsDir)) {
   fs.mkdirSync(uploadsDir, { recursive: true });
 }
+
+const allowedExtensions = new Set(['.jpg', '.jpeg', '.png', '.gif', '.webp']);
+const allowedMimes = new Set(['image/jpeg', 'image/png', 'image/gif', 'image/webp']);
 
 const storage = multer.diskStorage({
   destination: (_req, _file, cb) => cb(null, uploadsDir),
@@ -28,9 +31,9 @@ const upload = multer({
   storage,
   limits: { fileSize: 10 * 1024 * 1024 }, // 10MB
   fileFilter: (_req, file, cb) => {
-    const allowed = ['.jpg', '.jpeg', '.png', '.gif', '.webp'];
     const ext = path.extname(file.originalname).toLowerCase();
-    if (allowed.includes(ext)) {
+    const mimetype = (file.mimetype || '').toLowerCase();
+    if (allowedExtensions.has(ext) && allowedMimes.has(mimetype)) {
       cb(null, true);
     } else {
       cb(new Error('Formato não permitido. Use JPG, PNG, GIF ou WebP.'));

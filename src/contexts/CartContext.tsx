@@ -8,7 +8,7 @@ function itemKey(productId: string, variationId?: string) {
 }
 
 function itemPrice(item: CartItem): number {
-  return item.product.price + (item.variation?.price_modifier ?? 0);
+  return Number(item.product.price) + Number(item.variation?.price_modifier ?? 0);
 }
 
 interface CartContextType {

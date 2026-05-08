@@ -161,7 +161,9 @@ export function Catalog() {
                   {filtered.map(product => (
                     <div key={product.id} className="product-card">
                       <Link to={`/produto/${product.id}`} className="product-image">
-                        <img src={product.image_url} alt={product.name} loading="lazy" />
+                        {product.image_url ? (
+                          <img src={product.image_url} alt={product.name} loading="lazy" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} />
+                        ) : null}
                         {!isLoggedIn && (
                           <div className="b2b-overlay">
                             <span>Área Restrita</span>

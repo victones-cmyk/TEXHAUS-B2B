@@ -18,6 +18,9 @@ const Exchanges = lazy(() => import('./pages/Policies').then(m => ({ default: m.
 const Shipping = lazy(() => import('./pages/Policies').then(m => ({ default: m.Shipping })));
 const Terms = lazy(() => import('./pages/Policies').then(m => ({ default: m.Terms })));
 const Admin = lazy(() => import('./pages/Admin').then(m => ({ default: m.Admin })));
+const Register = lazy(() => import('./pages/Register').then(m => ({ default: m.Register })));
+const RegisterSuccess = lazy(() => import('./pages/RegisterSuccess').then(m => ({ default: m.RegisterSuccess })));
+const Login = lazy(() => import('./pages/Login').then(m => ({ default: m.Login })));
 
 function App() {
   return (
@@ -38,6 +41,9 @@ function App() {
         <Route path="/checkout" element={<Checkout />} />
         <Route path="/account" element={<Account />} />
         <Route path="/admin/*" element={<Admin />} />
+<Route path="/cadastro" element={<Register />} />
+<Route path="/cadastro/sucesso" element={<RegisterSuccess />} />
+<Route path="/login" element={<Login />} />
       </Routes>
     </Suspense>
   );

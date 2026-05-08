@@ -33,6 +33,11 @@ interface SignUpData {
   customerType: string;
   city: string;
   state: string;
+  cep: string;
+  addressStreet: string;
+  addressNumber: string;
+  addressComplement: string;
+  addressNeighborhood: string;
 }
 
 interface AuthContextType {
@@ -141,7 +146,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         profile,
         isLoggedIn: !!user,
         isAdmin: profile?.role === 'admin',
-        isB2BApproved: profile?.role === 'b2b_approved',
+        isB2BApproved: profile?.role === 'b2b_approved' || profile?.role === 'admin',
         loading,
         signIn,
         signUp,

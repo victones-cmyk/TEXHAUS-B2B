@@ -1,6 +1,8 @@
 import { Router, Request, Response } from 'express';
 import { query } from '../db.js';
 import { requireAdmin, AuthRequest } from '../middleware/auth.js';
+import { createPostSchema, updatePostSchema, idParamSchema } from '../validators/index.js';
+import { validatePayload } from '../utils/validation.js';
 
 const router = Router();
 
@@ -16,7 +18,10 @@ router.get('/', async (_req: Request, res: Response) => {
 
 router.get('/:id', async (req: Request, res: Response) => {
   try {
-    const result = await query('SELECT * FROM posts WHERE id = $1', [req.params.id]);
+    const params = validatePayload(idParamSchema, req.params, res, 'ID inválido');
+    if (!params) return;
+
+    const result = await query('SELECT * FROM posts WHERE id = $1', [params.id]);
     if (result.rows.length === 0) {
       res.status(404).json({ message: 'Post não encontrado' });
       return;
@@ -30,11 +35,10 @@ router.get('/:id', async (req: Request, res: Response) => {
 
 router.post('/', requireAdmin, async (req: AuthRequest, res: Response) => {
   try {
-    const { title, content, excerpt, category, image_url } = req.body;
-    if (!title) {
-      res.status(400).json({ message: 'Título é obrigatório' });
-      return;
-    }
+    const data = validatePayload(createPostSchema, req.body, res, 'Dados do post inválidos');
+    if (!data) return;
+
+    const { title, content, excerpt, category, image_url } = data;
     const result = await query(
       'INSERT INTO posts (title, content, excerpt, category, image_url) VALUES ($1, $2, $3, $4, $5) RETURNING *',
       [title, content || '', excerpt || '', category || '', image_url || ''],
@@ -48,10 +52,16 @@ router.post('/', requireAdmin, async (req: AuthRequest, res: Response) => {
 
 router.put('/:id', requireAdmin, async (req: AuthRequest, res: Response) => {
   try {
-    const { title, content, excerpt, category, image_url } = req.body;
+    const params = validatePayload(idParamSchema, req.params, res, 'ID inválido');
+    if (!params) return;
+
+    const data = validatePayload(updatePostSchema, req.body, res, 'Dados do post inválidos');
+    if (!data) return;
+
+    const { title, content, excerpt, category, image_url } = data;
     const result = await query(
       'UPDATE posts SET title = $1, content = $2, excerpt = $3, category = $4, image_url = $5 WHERE id = $6 RETURNING *',
-      [title, content, excerpt, category, image_url, req.params.id],
+      [title, content, excerpt, category, image_url, params.id],
     );
     if (result.rows.length === 0) {
       res.status(404).json({ message: 'Post não encontrado' });
@@ -66,7 +76,10 @@ router.put('/:id', requireAdmin, async (req: AuthRequest, res: Response) => {
 
 router.delete('/:id', requireAdmin, async (req: AuthRequest, res: Response) => {
   try {
-    const result = await query('DELETE FROM posts WHERE id = $1 RETURNING id', [req.params.id]);
+    const params = validatePayload(idParamSchema, req.params, res, 'ID inválido');
+    if (!params) return;
+
+    const result = await query('DELETE FROM posts WHERE id = $1 RETURNING id', [params.id]);
     if (result.rows.length === 0) {
       res.status(404).json({ message: 'Post não encontrado' });
       return;

@@ -4,13 +4,11 @@ import { useAuth } from '../contexts/AuthContext';
 import { useCart } from '../contexts/CartContext';
 
 export function Navbar() {
-  const { isLoggedIn, isAdmin, signIn, signUp, signOut } = useAuth();
+  const { isLoggedIn, isAdmin, signIn, signOut } = useAuth();
   const { itemCount } = useCart();
   const [showModal, setShowModal] = useState(false);
-  const [authMode, setAuthMode] = useState<'login' | 'register'>('login');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
-  const [successMessage, setSuccessMessage] = useState('');
   const [mobileOpen, setMobileOpen] = useState(false);
   const navigate = useNavigate();
 
@@ -19,13 +17,6 @@ export function Navbar() {
   const handleAdminAccess = () => {
     setShowModal(false);
     navigate('/admin');
-  };
-
-  const handleOpenModal = (mode: 'login' | 'register' = 'login') => {
-    setAuthMode(mode);
-    setErrorMessage('');
-    setSuccessMessage('');
-    setShowModal(true);
   };
 
   const handleLoginSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
@@ -42,42 +33,6 @@ export function Navbar() {
       setErrorMessage(error);
     } else {
       setShowModal(false);
-    }
-    setIsSubmitting(false);
-  };
-
-  const handleRegisterSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    setIsSubmitting(true);
-    setErrorMessage('');
-    setSuccessMessage('');
-
-    const formData = new FormData(e.currentTarget);
-    const password = formData.get('password') as string;
-    const confirmPassword = formData.get('confirmPassword') as string;
-
-    if (password !== confirmPassword) {
-      setErrorMessage('As senhas não conferem.');
-      setIsSubmitting(false);
-      return;
-    }
-
-    const error = await signUp({
-      email: formData.get('email') as string,
-      password,
-      fullName: formData.get('fullName') as string,
-      companyName: formData.get('companyName') as string,
-      cnpj: formData.get('cnpj') as string,
-      phone: formData.get('phone') as string,
-      customerType: formData.get('customerType') as string,
-      city: formData.get('city') as string,
-      state: formData.get('state') as string,
-    });
-
-    if (error) {
-      setErrorMessage(error);
-    } else {
-      setSuccessMessage('Solicitação enviada com sucesso! Nossa equipe analisará seu cadastro em breve.');
     }
     setIsSubmitting(false);
   };
@@ -104,7 +59,10 @@ export function Navbar() {
               </span>
             </Link>
             {!isLoggedIn ? (
-              <button className="btn-secondary" onClick={() => handleOpenModal('login')}>Área do Parceiro</button>
+              <>
+                <Link to="/cadastro" className="nav-link cadastro-link">Cadastre-se</Link>
+                <button className="btn-secondary" onClick={() => setShowModal(true)}>Área do Parceiro</button>
+              </>
             ) : (
               <div className="user-profile">
                 <Link to="/account" className="nav-link">Minha Conta</Link>
@@ -141,9 +99,12 @@ export function Navbar() {
               {isLoggedIn && <Link to="/account" onClick={closeMobile}>Minha Conta</Link>}
               {isAdmin && <Link to="/admin" onClick={closeMobile}>Painel Admin</Link>}
               {!isLoggedIn ? (
-                <button className="btn-secondary mobile-auth-btn" onClick={() => { closeMobile(); handleOpenModal('login'); }}>
-                  Área do Parceiro
-                </button>
+                <>
+                  <Link to="/cadastro" onClick={closeMobile} className="mobile-cadastro-link">Cadastre-se</Link>
+                  <button className="btn-secondary mobile-auth-btn" onClick={() => { closeMobile(); setShowModal(true); }}>
+                    Área do Parceiro
+                  </button>
+                </>
               ) : (
                 <button className="btn-secondary mobile-auth-btn logout" onClick={() => { closeMobile(); signOut(); }}>
                   Sair
@@ -156,7 +117,7 @@ export function Navbar() {
 
       {showModal && (
         <div className="modal-overlay" onClick={() => setShowModal(false)}>
-          <div className={`modal-content ${authMode === 'register' ? 'modal-lg' : ''}`} onClick={e => e.stopPropagation()}>
+          <div className="modal-content" onClick={e => e.stopPropagation()}>
             <span className="close-modal" onClick={() => setShowModal(false)}>×</span>
 
             {errorMessage && (
@@ -165,129 +126,22 @@ export function Navbar() {
               </div>
             )}
 
-            {authMode === 'login' ? (
-              <>
-                <h2>Acesso Restrito</h2>
-                <p>Faça login na sua conta de parceiro B2B.</p>
-                <form onSubmit={handleLoginSubmit}>
-                  <div className="form-group">
-                    <input type="email" name="loginEmail" required placeholder="E-mail corporativo" />
-                    <input type="password" name="loginPassword" required placeholder="Senha" />
-                  </div>
-                  <div className="modal-actions">
-                    <button type="submit" className="btn-primary" disabled={isSubmitting}>
-                      {isSubmitting ? 'Entrando...' : 'Entrar como Parceiro'}
-                    </button>
-                    <p className="auth-switch">
-                      Ainda não tem conta? <span onClick={() => setAuthMode('register')}>Solicitar Cadastro</span>
-                    </p>
-                  </div>
-                </form>
-              </>
-            ) : (
-              <>
-                <h2>Cadastro B2B</h2>
-
-                {successMessage ? (
-                  <div style={{ textAlign: 'center', padding: '2rem 0' }}>
-                    <div style={{ fontSize: '3rem', color: '#c8a86e', marginBottom: '1rem' }}>✓</div>
-                    <p style={{ fontSize: '1.1rem', color: '#1a1a1a', fontWeight: '500' }}>{successMessage}</p>
-                    <button className="btn-primary" style={{ marginTop: '2rem' }} onClick={() => setShowModal(false)}>Fechar</button>
-                  </div>
-                ) : (
-                  <>
-                    <p>Preencha os dados abaixo para solicitar acesso aos preços exclusivos.</p>
-                    <form className="register-form" onSubmit={handleRegisterSubmit}>
-                      <div className="form-row">
-                        <div className="form-group">
-                          <label>Nome Completo*</label>
-                          <input type="text" name="fullName" required placeholder="Seu nome" />
-                        </div>
-                        <div className="form-group">
-                          <label>Empresa*</label>
-                          <input type="text" name="companyName" required placeholder="Razão Social ou Fantasia" />
-                        </div>
-                      </div>
-
-                      <div className="form-row">
-                        <div className="form-group">
-                          <label>CNPJ*</label>
-                          <input type="text" name="cnpj" required placeholder="00.000.000/0000-00" />
-                        </div>
-                        <div className="form-group">
-                          <label>E-mail*</label>
-                          <input type="email" name="email" required placeholder="contato@empresa.com.br" />
-                        </div>
-                      </div>
-
-                      <div className="form-row">
-                        <div className="form-group">
-                          <label>Senha*</label>
-                          <input type="password" name="password" required placeholder="Crie uma senha" minLength={6} />
-                        </div>
-                        <div className="form-group">
-                          <label>Confirmar Senha*</label>
-                          <input type="password" name="confirmPassword" required placeholder="Repita a senha" minLength={6} />
-                        </div>
-                      </div>
-
-                      <div className="form-row">
-                        <div className="form-group">
-                          <label>Telefone/WhatsApp*</label>
-                          <input type="text" name="phone" required placeholder="(00) 00000-0000" />
-                        </div>
-                        <div className="form-group">
-                          <label>Tipo de Cliente*</label>
-                          <select name="customerType" required className="auth-select">
-                            <option value="">Selecione...</option>
-                            <option value="lojista">Lojista</option>
-                            <option value="arquiteto">Arquiteto(a)</option>
-                            <option value="decorador">Decorador(a)</option>
-                            <option value="instalador">Instalador(a)</option>
-                            <option value="distribuidor">Distribuidor</option>
-                            <option value="outro">Outro</option>
-                          </select>
-                        </div>
-                      </div>
-
-                      <div className="form-row">
-                        <div className="form-group">
-                          <label>Cidade*</label>
-                          <input type="text" name="city" required placeholder="Sua cidade" />
-                        </div>
-                        <div className="form-group">
-                          <label>Estado*</label>
-                          <select name="state" required className="auth-select">
-                            <option value="">UF</option>
-                            <option value="SP">São Paulo</option>
-                            <option value="RJ">Rio de Janeiro</option>
-                            <option value="MG">Minas Gerais</option>
-                            <option value="PR">Paraná</option>
-                            <option value="SC">Santa Catarina</option>
-                            <option value="RS">Rio Grande do Sul</option>
-                            <option value="OUTRO">Outros</option>
-                          </select>
-                        </div>
-                      </div>
-
-                      <div className="form-checkbox">
-                        <input type="checkbox" id="termos" required />
-                        <label htmlFor="termos">Declaro que li e aceito os Termos e Condições de cadastro B2B.</label>
-                      </div>
-
-                      <div className="modal-actions" style={{ marginTop: '20px' }}>
-                        <button type="submit" className="btn-primary" disabled={isSubmitting}>
-                          {isSubmitting ? 'Enviando...' : 'Enviar Solicitação'}
-                        </button>
-                        <p className="auth-switch">
-                          Já tem cadastro? <span onClick={() => setAuthMode('login')}>Fazer Login</span>
-                        </p>
-                      </div>
-                    </form>
-                  </>
-                )}
-              </>
-            )}
+            <h2>Acesso Restrito</h2>
+            <p>Faça login na sua conta de parceiro B2B.</p>
+            <form onSubmit={handleLoginSubmit}>
+              <div className="form-group">
+                <input type="email" name="loginEmail" required placeholder="E-mail corporativo" />
+                <input type="password" name="loginPassword" required placeholder="Senha" />
+              </div>
+              <div className="modal-actions">
+                <button type="submit" className="btn-primary" disabled={isSubmitting}>
+                  {isSubmitting ? 'Entrando...' : 'Entrar como Parceiro'}
+                </button>
+                 <p className="auth-switch">
+                    Ainda não tem conta? <Link to="/cadastro" onClick={() => setShowModal(false)}>Solicitar Cadastro</Link>
+                  </p>
+              </div>
+            </form>
           </div>
         </div>
       )}

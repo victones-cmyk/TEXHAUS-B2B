@@ -2,17 +2,32 @@ import { Router, Response } from 'express';
 import bcrypt from 'bcryptjs';
 import { query } from '../db.js';
 import { generateToken, requireAuth, AuthRequest } from '../middleware/auth.js';
+import { loginSchema, registerSchema, changePasswordSchema } from '../validators/index.js';
+import { validatePayload } from '../utils/validation.js';
 
 const router = Router();
 
 router.post('/register', async (req: AuthRequest, res: Response) => {
   try {
-    const { email, password, fullName, companyName, cnpj, phone, customerType, city, state, cep, addressStreet, addressNumber, addressComplement, addressNeighborhood } = req.body;
+    const data = validatePayload(registerSchema, req.body, res, 'Dados de cadastro inválidos');
+    if (!data) return;
 
-    if (!email || !password) {
-      res.status(400).json({ message: 'E-mail e senha são obrigatórios' });
-      return;
-    }
+    const {
+      email,
+      password,
+      fullName,
+      companyName,
+      cnpj,
+      phone,
+      customerType,
+      city,
+      state,
+      cep,
+      addressStreet,
+      addressNumber,
+      addressComplement,
+      addressNeighborhood,
+    } = data;
 
     const existing = await query('SELECT id FROM profiles WHERE email = $1', [email]);
     if (existing.rows.length > 0) {
@@ -41,12 +56,10 @@ router.post('/register', async (req: AuthRequest, res: Response) => {
 
 router.post('/login', async (req: AuthRequest, res: Response) => {
   try {
-    const { email, password } = req.body;
+    const data = validatePayload(loginSchema, req.body, res, 'Credenciais inválidas');
+    if (!data) return;
 
-    if (!email || !password) {
-      res.status(400).json({ message: 'E-mail e senha são obrigatórios' });
-      return;
-    }
+    const { email, password } = data;
 
     const result = await query(
       'SELECT id, email, password_hash, role FROM profiles WHERE email = $1',
@@ -96,6 +109,36 @@ router.get('/me', requireAuth, async (req: AuthRequest, res: Response) => {
   } catch (err: unknown) {
     console.error('Me error:', err);
     res.status(500).json({ message: 'Erro ao buscar perfil' });
+  }
+});
+
+router.put('/password', requireAuth, async (req: AuthRequest, res: Response) => {
+  try {
+    const data = validatePayload(changePasswordSchema, req.body, res, 'Dados inválidos');
+    if (!data) return;
+
+    const userResult = await query(
+      'SELECT password_hash FROM profiles WHERE id = $1',
+      [req.user!.id],
+    );
+    if (userResult.rows.length === 0) {
+      res.status(404).json({ message: 'Usuário não encontrado' });
+      return;
+    }
+
+    const valid = await bcrypt.compare(data.currentPassword, userResult.rows[0].password_hash);
+    if (!valid) {
+      res.status(400).json({ message: 'Senha atual incorreta' });
+      return;
+    }
+
+    const newHash = await bcrypt.hash(data.newPassword, 10);
+    await query('UPDATE profiles SET password_hash = $1 WHERE id = $2', [newHash, req.user!.id]);
+
+    res.json({ message: 'Senha alterada com sucesso' });
+  } catch (err: unknown) {
+    console.error('Password change error:', err);
+    res.status(500).json({ message: 'Erro ao alterar senha' });
   }
 });
 

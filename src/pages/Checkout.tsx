@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { useState, useEffect } from 'react';
+import { Link, Navigate } from 'react-router-dom';
 import { api } from '../lib/api';
 import { useAuth } from '../contexts/AuthContext';
 import { useCart } from '../contexts/CartContext';
@@ -7,41 +7,91 @@ import { Navbar } from '../components/Navbar';
 import { Footer } from '../components/Footer';
 import { SEO } from '../components/SEO';
 
+interface ShippingMethod {
+  id: string;
+  name: string;
+  description: string;
+  price: number | string;
+  regions: string[];
+  estimated_days: string;
+  active: boolean;
+}
+
+interface PaymentMethod {
+  id: string;
+  name: string;
+  description: string;
+  icon: string;
+  discount_text: string | null;
+  active: boolean;
+}
+
 export function Checkout() {
   const { profile, isLoggedIn, isB2BApproved } = useAuth();
   const { items, total, itemCount, clearCart } = useCart();
-  const navigate = useNavigate();
   const [notes, setNotes] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [done, setDone] = useState(false);
   const [error, setError] = useState('');
+  const [shippingMethods, setShippingMethods] = useState<ShippingMethod[]>([]);
+  const [paymentMethods, setPaymentMethods] = useState<PaymentMethod[]>([]);
+  const [selectedShippingId, setSelectedShippingId] = useState<string | null>(null);
+  const [selectedPaymentId, setSelectedPaymentId] = useState<string | null>(null);
+
+  useEffect(() => {
+    api<ShippingMethod[]>('/shipping-methods').then(data => {
+      setShippingMethods(data);
+      if (data.length > 0) setSelectedShippingId(data[0].id);
+    }).catch(() => {});
+    api<PaymentMethod[]>('/payment-methods').then(data => {
+      setPaymentMethods(data);
+      if (data.length > 0) setSelectedPaymentId(data[0].id);
+    }).catch(() => {});
+  }, []);
 
   if (!isLoggedIn || !isB2BApproved) {
-    navigate('/cart', { replace: true });
-    return null;
+    return <Navigate to="/cart" replace />;
   }
 
   if (items.length === 0 && !done) {
-    navigate('/cart', { replace: true });
-    return null;
+    return <Navigate to="/cart" replace />;
   }
 
   const handleSubmit = async () => {
     setSubmitting(true);
     setError('');
 
+    if (!selectedShippingId) {
+      setError('Selecione uma forma de entrega.');
+      setSubmitting(false);
+      return;
+    }
+    if (!selectedPaymentId) {
+      setError('Selecione uma forma de pagamento.');
+      setSubmitting(false);
+      return;
+    }
+
     const orderItems = items.map(item => ({
       product_id: item.product.id,
       product_name: `${item.product.name}${item.variation ? ` (${item.variation.name})` : ''}`,
       product_sku: item.variation?.sku || item.product.sku,
       quantity: item.quantity,
-      unit_price: item.product.price + (item.variation?.price_modifier ?? 0),
+      unit_price: Number(item.product.price) + Number(item.variation?.price_modifier ?? 0),
     }));
+
+    const shippingNote = shippingMethods.find(s => s.id === selectedShippingId);
+    const paymentNote = paymentMethods.find(p => p.id === selectedPaymentId);
+    const combinedNotes = [
+      notes,
+      shippingNote ? `Frete: ${shippingNote.name}` : '',
+      paymentNote ? `Pagamento: ${paymentNote.name}` : '',
+    ].filter(Boolean).join(' | ');
 
     try {
       await api('/orders', {
         method: 'POST',
-        body: JSON.stringify({ items: orderItems, notes }),
+        body: JSON.stringify({ items: orderItems, notes: combinedNotes }),
       });
       clearCart();
       setDone(true);
@@ -51,6 +101,9 @@ export function Checkout() {
       setSubmitting(false);
     }
   };
+
+  const selectedShipping = shippingMethods.find(s => s.id === selectedShippingId);
+  const selectedPayment = paymentMethods.find(p => p.id === selectedPaymentId);
 
   if (done) {
     return (
@@ -110,57 +163,54 @@ export function Checkout() {
               <div className="checkout-section">
                 <h3>Formas de Pagamento</h3>
                 <div className="payment-methods-list">
-                  <div className="payment-method-item">
-                    <div>
-                      <strong>Pix</strong>
-                      <span className="payment-discount">5% de desconto</span>
-                    </div>
-                    <span className="payment-desc">Pagamento instantâneo</span>
-                  </div>
-                  <div className="payment-method-item">
-                    <div>
-                      <strong>Cartão de Crédito</strong>
-                      <span className="payment-discount">Parcele em até 12x</span>
-                    </div>
-                    <span className="payment-desc">Com ou sem juros</span>
-                  </div>
-                  <div className="payment-method-item">
-                    <div>
-                      <strong>Boleto Bancário</strong>
-                    </div>
-                    <span className="payment-desc">Vencimento em 3 dias úteis</span>
-                  </div>
+                  {paymentMethods.length === 0 ? (
+                    <p style={{ color: 'var(--color-text-light)', fontSize: '0.9rem' }}>Nenhuma forma de pagamento disponível.</p>
+                  ) : (
+                    paymentMethods.map(pm => (
+                      <div
+                        key={pm.id}
+                        className={`payment-method-item ${selectedPaymentId === pm.id ? 'selected' : ''}`}
+                        onClick={() => setSelectedPaymentId(pm.id)}
+                        style={{ cursor: 'pointer' }}
+                      >
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                          <span className={`checkout-radio ${selectedPaymentId === pm.id ? 'checked' : ''}`} />
+                          <div>
+                            <strong>{pm.name}</strong>
+                            {pm.discount_text && <span className="payment-discount">{pm.discount_text}</span>}
+                          </div>
+                        </div>
+                        <span className="payment-desc">{pm.description}</span>
+                      </div>
+                    ))
+                  )}
                 </div>
               </div>
 
               <div className="checkout-section">
                 <h3>Formas de Entrega</h3>
                 <div className="shipping-methods-list">
-                  <div className="shipping-method-item">
-                    <strong>Retirada na Empresa</strong>
-                    <span className="shipping-price">Grátis</span>
-                    <span className="shipping-desc">São Paulo, SP</span>
-                  </div>
-                  <div className="shipping-method-item">
-                    <strong>Frete Fixo - Capital SP</strong>
-                    <span className="shipping-price">R$ 19,90</span>
-                    <span className="shipping-desc">1 a 3 dias úteis</span>
-                  </div>
-                  <div className="shipping-method-item">
-                    <strong>Frete Fixo - Grande SP</strong>
-                    <span className="shipping-price">R$ 29,90</span>
-                    <span className="shipping-desc">2 a 5 dias úteis</span>
-                  </div>
-                  <div className="shipping-method-item">
-                    <strong>Frete Fixo - Sudeste</strong>
-                    <span className="shipping-price">R$ 39,90</span>
-                    <span className="shipping-desc">3 a 7 dias úteis</span>
-                  </div>
-                  <div className="shipping-method-item">
-                    <strong>Frete Fixo - Demais Regiões</strong>
-                    <span className="shipping-price">R$ 59,90</span>
-                    <span className="shipping-desc">5 a 15 dias úteis</span>
-                  </div>
+                  {shippingMethods.length === 0 ? (
+                    <p style={{ color: 'var(--color-text-light)', fontSize: '0.9rem' }}>Nenhuma opção de frete disponível.</p>
+                  ) : (
+                    shippingMethods.map(sm => (
+                      <div
+                        key={sm.id}
+                        className={`shipping-method-item ${selectedShippingId === sm.id ? 'selected' : ''}`}
+                        onClick={() => setSelectedShippingId(sm.id)}
+                        style={{ cursor: 'pointer' }}
+                      >
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flex: 1 }}>
+                          <span className={`checkout-radio ${selectedShippingId === sm.id ? 'checked' : ''}`} />
+                          <strong>{sm.name}</strong>
+                        </div>
+                        <span className="shipping-price">
+                          {Number(sm.price) === 0 ? 'Grátis' : new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(Number(sm.price))}
+                        </span>
+                        <span className="shipping-desc">{sm.estimated_days || sm.description}</span>
+                      </div>
+                    ))
+                  )}
                 </div>
               </div>
 
@@ -181,7 +231,7 @@ export function Checkout() {
                 <h3>Resumo do Pedido</h3>
                 <div className="checkout-items">
                   {items.map(item => {
-                    const unitPrice = item.product.price + (item.variation?.price_modifier ?? 0);
+                    const unitPrice = Number(item.product.price) + Number(item.variation?.price_modifier ?? 0);
                     return (
                       <div key={`${item.product.id}-${item.variation?.id ?? 'base'}`} className="checkout-item">
                         <span className="checkout-item-name">
@@ -205,6 +255,24 @@ export function Checkout() {
                     }).format(total)}
                   </span>
                 </div>
+
+                {selectedShipping && (
+                  <div className="summary-row" style={{ fontSize: '0.85rem', color: 'var(--color-text-light)' }}>
+                    <span>Frete</span>
+                    <span style={{ fontWeight: 600, color: 'var(--color-text)' }}>
+                      {selectedShipping.name}
+                      {Number(selectedShipping.price) > 0 && (
+                        <> — {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(Number(selectedShipping.price))}</>
+                      )}
+                    </span>
+                  </div>
+                )}
+                {selectedPayment && (
+                  <div className="summary-row" style={{ fontSize: '0.85rem', color: 'var(--color-text-light)' }}>
+                    <span>Pagamento</span>
+                    <span style={{ fontWeight: 600, color: 'var(--color-text)' }}>{selectedPayment.name}</span>
+                  </div>
+                )}
 
                 {error && (
                   <div style={{ color: '#dc2626', fontSize: '0.85rem', marginBottom: '1rem', padding: '0.75rem', background: '#fef2f2', borderRadius: '4px' }}>

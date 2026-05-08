@@ -1,6 +1,8 @@
 import { Router, Request, Response } from 'express';
 import { query } from '../db.js';
 import { requireAdmin, AuthRequest } from '../middleware/auth.js';
+import { categorySchema, idParamSchema } from '../validators/index.js';
+import { validatePayload } from '../utils/validation.js';
 
 const router = Router();
 
@@ -16,14 +18,14 @@ router.get('/', async (_req: Request, res: Response) => {
 
 router.post('/', requireAdmin, async (req: AuthRequest, res: Response) => {
   try {
-    const { name, slug, parent_id } = req.body;
-    if (!name || !slug) {
-      res.status(400).json({ message: 'Nome e slug são obrigatórios' });
-      return;
-    }
+    const data = validatePayload(categorySchema, req.body, res, 'Dados da categoria inválidos');
+    if (!data) return;
+
+    const { name, slug, parent_id } = data;
+    const normalizedSlug = slug.trim().toLowerCase().replace(/\s+/g, '-');
     const result = await query(
       'INSERT INTO categories (name, slug, parent_id) VALUES ($1, $2, $3) RETURNING *',
-      [name.trim(), slug.trim().toLowerCase().replace(/\s+/g, '-'), parent_id || null],
+      [name.trim(), normalizedSlug, parent_id || null],
     );
     res.status(201).json(result.rows[0]);
   } catch (err: unknown) {
@@ -34,10 +36,17 @@ router.post('/', requireAdmin, async (req: AuthRequest, res: Response) => {
 
 router.put('/:id', requireAdmin, async (req: AuthRequest, res: Response) => {
   try {
-    const { name, slug, parent_id } = req.body;
+    const params = validatePayload(idParamSchema, req.params, res, 'ID inválido');
+    if (!params) return;
+
+    const data = validatePayload(categorySchema, req.body, res, 'Dados da categoria inválidos');
+    if (!data) return;
+
+    const { name, slug, parent_id } = data;
+    const normalizedSlug = slug.trim().toLowerCase().replace(/\s+/g, '-');
     const result = await query(
       'UPDATE categories SET name = $1, slug = $2, parent_id = $3 WHERE id = $4 RETURNING *',
-      [name.trim(), slug.trim().toLowerCase().replace(/\s+/g, '-'), parent_id || null, req.params.id],
+      [name.trim(), normalizedSlug, parent_id || null, params.id],
     );
     if (result.rows.length === 0) {
       res.status(404).json({ message: 'Categoria não encontrada' });
@@ -52,12 +61,15 @@ router.put('/:id', requireAdmin, async (req: AuthRequest, res: Response) => {
 
 router.delete('/:id', requireAdmin, async (req: AuthRequest, res: Response) => {
   try {
-    const children = await query('SELECT id FROM categories WHERE parent_id = $1', [req.params.id]);
+    const params = validatePayload(idParamSchema, req.params, res, 'ID inválido');
+    if (!params) return;
+
+    const children = await query('SELECT id FROM categories WHERE parent_id = $1', [params.id]);
     if (children.rows.length > 0) {
       res.status(400).json({ message: 'Exclua as subcategorias primeiro.' });
       return;
     }
-    const result = await query('DELETE FROM categories WHERE id = $1 RETURNING id', [req.params.id]);
+    const result = await query('DELETE FROM categories WHERE id = $1 RETURNING id', [params.id]);
     if (result.rows.length === 0) {
       res.status(404).json({ message: 'Categoria não encontrada' });
       return;

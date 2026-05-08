@@ -10,7 +10,7 @@ function itemKey(item: { product: { id: string }; variation?: { id: string } }) 
 }
 
 function itemPrice(item: { product: { price: number }; variation?: { price_modifier: number } }): number {
-  return item.product.price + (item.variation?.price_modifier ?? 0);
+  return Number(item.product.price) + Number(item.variation?.price_modifier ?? 0);
 }
 
 export function Cart() {

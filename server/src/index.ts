@@ -1,6 +1,7 @@
 import 'dotenv/config';
 import express from 'express';
-import cors from 'cors';
+import cors, { CorsOptions } from 'cors';
+import rateLimit from 'express-rate-limit';
 
 import authRoutes from './routes/auth.js';
 import productsRoutes from './routes/products.js';
@@ -9,12 +10,40 @@ import ordersRoutes from './routes/orders.js';
 import profilesRoutes from './routes/profiles.js';
 import postsRoutes from './routes/posts.js';
 import contactRoutes from './routes/contact.js';
+import shippingRoutes from './routes/shipping.js';
+import paymentsRoutes from './routes/payments.js';
 
 const app = express();
-const PORT = parseInt(process.env.PORT || '3001', 10);
+const PORT = parseInt(process.env.PORT || '5100', 10);
 
-app.use(cors());
+const envOrigins = (process.env.ALLOWED_ORIGINS ?? '')
+  .split(',')
+  .map(origin => origin.trim())
+  .filter(Boolean);
+
+const allowedOrigins = envOrigins.length > 0 ? envOrigins : ['http://localhost:5173'];
+
+const corsOptions: CorsOptions = {
+  origin: allowedOrigins,
+  credentials: true,
+};
+
+app.use(cors(corsOptions));
 app.use(express.json({ limit: '10mb' }));
+
+const rateLimitWindow = Number.parseInt(process.env.RATE_LIMIT_WINDOW_MS ?? '', 10);
+const rateLimitMax = Number.parseInt(process.env.RATE_LIMIT_MAX ?? '', 10);
+
+const apiLimiter = rateLimit({
+  windowMs: Number.isFinite(rateLimitWindow) && rateLimitWindow > 0 ? rateLimitWindow : 15 * 60 * 1000,
+  limit: Number.isFinite(rateLimitMax) && rateLimitMax > 0 ? rateLimitMax : 100,
+  standardHeaders: 'draft-7',
+  legacyHeaders: false,
+  message: { message: 'Limite de requisições excedido. Tente novamente mais tarde.' },
+  skip: (req) => req.method === 'OPTIONS',
+});
+
+app.use('/api', apiLimiter);
 
 // Health check
 app.get('/api', (_req, res) => {
@@ -33,6 +62,8 @@ app.use('/api/orders', ordersRoutes);
 app.use('/api/profiles', profilesRoutes);
 app.use('/api/posts', postsRoutes);
 app.use('/api/contact', contactRoutes);
+app.use('/api/shipping-methods', shippingRoutes);
+app.use('/api/payment-methods', paymentsRoutes);
 
 // Error handler
 app.use((err: Error, _req: express.Request, res: express.Response, next: express.NextFunction) => {

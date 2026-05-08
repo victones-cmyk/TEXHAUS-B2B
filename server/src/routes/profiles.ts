@@ -1,6 +1,8 @@
 import { Router, Response } from 'express';
 import { query } from '../db.js';
 import { requireAdmin, AuthRequest } from '../middleware/auth.js';
+import { idParamSchema, updateRoleSchema } from '../validators/index.js';
+import { validatePayload } from '../utils/validation.js';
 
 const router = Router();
 
@@ -18,10 +20,16 @@ router.get('/', requireAdmin, async (_req: AuthRequest, res: Response) => {
 
 router.put('/:id/role', requireAdmin, async (req: AuthRequest, res: Response) => {
   try {
-    const { role } = req.body;
+    const params = validatePayload(idParamSchema, req.params, res, 'ID inválido');
+    if (!params) return;
+
+    const data = validatePayload(updateRoleSchema, req.body, res, 'Papel inválido');
+    if (!data) return;
+
+    const { role } = data;
     const result = await query(
       'UPDATE profiles SET role = $1 WHERE id = $2 RETURNING id, email, role',
-      [role, req.params.id],
+      [role, params.id],
     );
     if (result.rows.length === 0) {
       res.status(404).json({ message: 'Perfil não encontrado' });
