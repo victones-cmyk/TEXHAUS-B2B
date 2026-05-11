@@ -1,568 +1,544 @@
-# PROJETO TEXHAUS B2B - Loja Virtual em WordPress + WooCommerce
+# PROJETO TEXHAUS B2B — Documentação Técnica
 
-## 1. ESTRUTURA SUGERIDA DO SITE
+## Stack Tecnológica
 
-### Páginas Principais
-| Página | Slug | Descrição |
+| Camada | Tecnologia |
+|--------|-----------|
+| **Frontend** | React 19, TypeScript, Vite, React Router DOM v7, react-helmet-async |
+| **Backend** | Node.js, Express 4, TypeScript |
+| **Banco de Dados** | PostgreSQL (conexão via `pg` Pool) |
+| **Autenticação** | JWT (jsonwebtoken), bcryptjs, tokens com 7 dias de validade |
+| **Validação** | Zod (schemas tipados com inferência TypeScript) |
+| **Estilização** | CSS puro com custom properties (fonte Montserrat), sem frameworks |
+| **Build** | Vite (frontend), tsc (servidor) |
+
+---
+
+## Estrutura de Diretórios
+
+```
+/opt/TEXHAUS/TEXHAUS-B2B/
+├── server/
+│   └── src/
+│       ├── index.ts              # Entry point Express (CORS, rate-limit, rotas)
+│       ├── db.ts                 # Pool PostgreSQL + helper query()
+│       ├── middleware/
+│       │   └── auth.ts           # requireAuth, requireAdmin, generateToken
+│       ├── routes/
+│       │   ├── auth.ts           # /api/auth (register, login, me, password)
+│       │   ├── products.ts       # /api/products (CRUD + search + variations)
+│       │   ├── categories.ts     # /api/categories (CRUD hierárquico)
+│       │   ├── orders.ts         # /api/orders (criação, listagem, status)
+│       │   ├── profiles.ts       # /api/profiles (listagem + alteração de role)
+│       │   ├── posts.ts          # /api/posts (blog CRUD)
+│       │   ├── contact.ts        # /api/contact (formulário de contato)
+│       │   ├── shipping.ts       # /api/shipping-methods (CRUD fretes)
+│       │   └── payments.ts       # /api/payment-methods (CRUD pagamentos)
+│       ├── utils/
+│       │   └── validation.ts     # validatePayload() wrapper Zod
+│       └── validators/
+│           └── index.ts          # Schemas Zod + tipos TypeScript inferidos
+├── src/
+│   ├── main.tsx                  # Entry point React (providers)
+│   ├── App.tsx                   # Roteamento lazy-loaded (18 rotas)
+│   ├── App.css                   # Estilos globais (~3100 linhas)
+│   ├── index.css                 # CSS variables + reset + botões base
+│   ├── types.ts                  # Product, ProductVariation, CartItem
+│   ├── vite-env.d.ts
+│   ├── assets/                   # hero.png, logos, favicon
+│   ├── lib/
+│   │   └── api.ts                # HTTP client genérico (fetch wrapper)
+│   ├── contexts/
+│   │   ├── AuthContext.tsx        # Autenticação + perfil + roles
+│   │   ├── CartContext.tsx        # Carrinho client-side
+│   │   └── ToastContext.tsx       # Notificações toast
+│   ├── components/
+│   │   ├── Navbar.tsx            # Barra de navegação (desktop + mobile)
+│   │   ├── Footer.tsx            # Rodapé
+│   │   ├── SEO.tsx               # Meta tags via react-helmet-async
+│   │   ├── Loading.tsx           # Spinner / skeleton / page loaders
+│   │   ├── SearchBar.tsx         # Busca de produtos com dropdown
+│   │   └── Admin/
+│   │       ├── AdminClients.tsx   # Gestão de clientes B2B (aprovar/rejeitar)
+│   │       ├── AdminOrders.tsx    # Gestão de pedidos (trocar status)
+│   │       ├── AdminCategories.tsx # CRUD de categorias
+│   │       ├── AdminApprovals.tsx  # Dashboard de aprovações pendentes
+│   │       ├── AdminProducts.tsx   # CRUD de produtos
+│   │       ├── AdminPosts.tsx      # CRUD de posts do blog
+│   │       └── ProductModal.tsx    # Modal criar/editar produto
+│   └── pages/
+│       ├── Home.tsx              # Hero + grid de produtos + diferencais
+│       ├── Catalog.tsx           # Catálogo com filtros/busca/ordenação
+│       ├── ProductDetail.tsx     # Detalhe do produto + variações + compra
+│       ├── Cart.tsx              # Carrinho (B2B-gated)
+│       ├── Checkout.tsx          # Finalização de pedido (B2B-gated)
+│       ├── Account.tsx           # Minha Conta (perfil, senha, histórico)
+│       ├── Login.tsx             # Página de login dedicada
+│       ├── Register.tsx          # Formulário de cadastro B2B
+│       ├── RegisterSuccess.tsx   # Confirmação de cadastro enviado
+│       ├── Admin.tsx             # Painel admin (sub-rotas)
+│       ├── About.tsx             # Sobre Nós
+│       ├── Contact.tsx           # Formulário de contato
+│       ├── Blog.tsx              # Listagem de posts
+│       ├── BlogPost.tsx          # Post individual
+│       └── Policies.tsx          # 4 páginas de políticas (Privacy, Exchanges, Shipping, Terms)
+├── server.js                     # Script de inicialização do servidor
+├── package.json
+├── tsconfig.json                 # Referências para tsconfig.app.json + tsconfig.node.json
+├── tsconfig.app.json
+├── tsconfig.node.json
+├── vite.config.ts
+└── PROJETO.md                    # Este arquivo
+```
+
+---
+
+## Banco de Dados (PostgreSQL)
+
+### Tabelas e colunas principais
+
+**`profiles`** — Usuários do sistema (clientes B2B + administradores)
+
+| Coluna | Tipo | Descrição |
 |--------|------|-----------|
-| Home | `/` | Página inicial com destaques, categorias, novidades, blog |
-| Loja | `/loja/` | Lista de todos os produtos |
-| Categorias | `/categorias/` | Grid das categorias de produtos |
-| Produto | `/produto/{slug}/` | Página individual de produto |
-| Cadastro B2B | `/cadastro-b2b/` | Formulário de cadastro para distribuidores |
-| Minha Conta | `/minha-conta/` | Área do cliente (WooCommerce) |
-| Carrinho | `/carrinho/` | Carrinho de compras (WooCommerce) |
-| Checkout | `/checkout/` | Finalização de pedido (WooCommerce) |
-| Sobre Nós | `/sobre-nos/` | História e informações da empresa |
-| Blog | `/blog/` | Dicas úteis, tutoriais e novidades |
-| Contato | `/contato/` | Formulário de contato e informações |
-| Política de Privacidade | `/politica-de-privacidade/` | LGPD |
-| Trocas e Devoluções | `/trocas-e-devolucoes/` | Política de trocas |
-| Política de Envios | `/politica-de-envios/` | Informações de frete |
-| Termos e Condições | `/termos-e-condicoes/` | Termos legais |
+| id | UUID | PK |
+| email | text | Único, usado no login |
+| password_hash | text | bcrypt hash |
+| full_name | text | Nome completo |
+| company_name | text | Razão social / nome fantasia |
+| cnpj | text | CNPJ (opcional) |
+| phone | text | Telefone/WhatsApp |
+| customer_type | text | Tipo de cliente (lojista, arquiteto, etc) |
+| city | text | Cidade |
+| state | text | UF |
+| cep | text | CEP |
+| address_street | text | Logradouro |
+| address_number | text | Número |
+| address_complement | text | Complemento |
+| address_neighborhood | text | Bairro |
+| role | text | `admin`, `b2b_pending`, `b2b_approved`, `b2b_rejected` |
+| created_at | timestamptz | Data de criação |
 
-### Estrutura de Conteúdo
-- **Categorias de Produto** (hierárquicas):
-  - Tecidos
-    - Para Cortinas
-    - Para Persianas
-  - Acessórios
-    - Para Cortinas
-    - Para Persianas
-  - Cortinas
-    - Para Quarto e Sala
-  - Persianas
-    - Double Vision
-    - Rolô
-    - Romana
+**`products`** — Produtos do catálogo
 
-- **Categorias de Blog**:
-  - Cortinas
-  - Persianas
-  - Tutoriais
-  - Dicas
+| Coluna | Tipo | Descrição |
+|--------|------|-----------|
+| id | UUID | PK |
+| name | text | Nome do produto |
+| sku | text | Código SKU |
+| category | text | Categoria (string) |
+| price | numeric | Preço unitário |
+| stock_quantity | int | Quantidade em estoque |
+| image_url | text | Imagem principal |
+| images | text | JSON array ou string de URLs adicionais |
+| description | text | Descrição completa |
+| status | text | `draft` ou `published` |
+| created_at | timestamptz | Data de criação |
 
----
+**`product_variations`** — Variações dos produtos (cores, tamanhos, etc)
 
-## 2. LISTA DE PLUGINS RECOMENDADOS
+| Coluna | Tipo | Descrição |
+|--------|------|-----------|
+| id | UUID | PK |
+| product_id | UUID | FK → products.id |
+| name | text | Nome da variação (ex: "Vermelho", "2m") |
+| sku | text | SKU específico da variação |
+| price_modifier | numeric | Acréscimo/dedréscimo no preço base (default 0) |
+| stock_quantity | int | Estoque da variação |
+| image_url | text | Imagem específica da variação |
+| sort_order | int | Ordem de exibição |
 
-### Obrigatórios
-| Plugin | Função | Versão | Preço |
-|--------|--------|--------|-------|
-| **WooCommerce** | Plataforma de e-commerce | Última | Grátis |
-| **Brazilian Market on WooCommerce** | Correios, cálculo de frete, nota fiscal, NF-e | 5.0+ | Grátis |
-| **WooCommerce Extra Checkout Fields for Brazil** | CPF/CNPJ, RG, IE, endereço completo no checkout | Última | Grátis |
-| **WooCommerce Mercado Pago** | Pagamento com Pix, cartão, boleto | Oficial | Grátis |
-| **Advanced Custom Fields (ACF)** | Campos customizados para produtos e páginas | 6.0+ | Grátis |
-| **Yoast SEO** | SEO completo, sitemap, meta tags | Última | Grátis |
-| **Wordfence Security** | Firewall, proteção contra ataques | Última | Grátis |
-| **WP Rocket** | Cache, minificação, performance | Última | Pago (~R$200) |
-| **Loco Translate** | Tradução de temas e plugins | Última | Grátis |
-| **WooCommerce Product Importer/Exporter** | Gestão de estoque via CSV | Nativo | Grátis |
+**`categories`** — Categorias hierárquicas
 
-### B2B e Controle de Acesso
-| Plugin | Função | Preço |
-|--------|--------|-------|
-| **WooCommerce Wholesale Suite** | Controle B2B completo (Plugin principal recomendado) | $99/ano |
-| **YITH WooCommerce B2B** | Alternativa nacional com bom suporte | ~R$199 |
-| **Groups / Woocommerce Groups** | Controle de grupos de usuários e preços | Grátis |
-| **WooCommerce Role Based Pricing** | Preços por papel de usuário | Grátis |
+| Coluna | Tipo | Descrição |
+|--------|------|-----------|
+| id | UUID | PK |
+| name | text | Nome da categoria |
+| slug | text | URL slug normalizado |
+| parent_id | UUID | FK → categories.id (nulo = raiz) |
+| sort_order | int | Ordem de exibição |
 
-### Plug-in Customizado (Desenvolvimento Próprio)
-Criar plugin **texhaus-b2b-utils** (já incluso neste tema) contendo:
-- Sistema de aprovação manual de usuários
-- Campo CNPJ, empresa, telefone, tipo de cliente no cadastro
-- Notificação por e-mail ao admin no novo cadastro
-- Ocultação de preços e botão compra para não aprovados
-- Role personalizado "B2B Pending" e "B2B Approved"
+**`orders`** — Pedidos
 
----
+| Coluna | Tipo | Descrição |
+|--------|------|-----------|
+| id | UUID | PK |
+| user_id | UUID | FK → profiles.id |
+| status | text | `pending`, `confirmed`, `shipped`, `delivered`, `cancelled` |
+| total | numeric | Valor total |
+| customer_name | text | Nome do cliente (snapshot) |
+| customer_email | text | Email (snapshot) |
+| customer_company | text | Empresa (snapshot) |
+| customer_phone | text | Telefone (snapshot) |
+| shipping_address | text | Endereço completo montado |
+| notes | text | Observações do pedido |
+| created_at | timestamptz | Data do pedido |
 
-## 3. LAYOUT DAS PÁGINAS PRINCIPAIS
+**`order_items`** — Itens do pedido
 
-### HOME (front-page.php)
-```
-┌─────────────────────────────────────────────────┐
-│ HEADER: Logo | Menu Principal | Ícones (conta/carrinho) │
-├─────────────────────────────────────────────────┤
-│              HERO / BANNER PRINCIPAL              │
-│   "Distribuidora de tecidos e acessórios         │
-│    para cortinas e persianas"                    │
-│   [CTA: CONHECER]                                │
-├─────────────────────────────────────────────────┤
-│ DIFERENCIAIS (3 colunas):                        │
-│  Pagamento Facilitado │ Meios de Entrega │ WhatsApp │
-├─────────────────────────────────────────────────┤
-│           CATEGORIAS (grid 4 colunas)            │
-│  Tecidos │ Acessórios │ Cortinas │ Persianas     │
-├─────────────────────────────────────────────────┤
-│              NOVIDADES (carrossel)                │
-│  Últimos produtos adicionados                    │
-├─────────────────────────────────────────────────┤
-│           NEWSLETTER (formulário)                │
-├─────────────────────────────────────────────────┤
-│        DICAS ÚTEIS / BLOG (grid posts)           │
-├─────────────────────────────────────────────────┤
-│              TRENDING NOW (grid 4)               │
-├─────────────────────────────────────────────────┤
-│ FOOTER: Logo | Contato | Links | Newsletter | Redes │
-└─────────────────────────────────────────────────┘
-```
+| Coluna | Tipo | Descrição |
+|--------|------|-----------|
+| id | UUID | PK |
+| order_id | UUID | FK → orders.id |
+| product_id | text | ID do produto |
+| product_name | text | Nome do produto (snapshot) |
+| product_sku | text | SKU (snapshot) |
+| quantity | int | Quantidade |
+| unit_price | numeric | Preço unitário no momento do pedido |
 
-### LOJA / CATEGORIA (archive-product.php)
-```
-┌─────────────────────────────────────────────────┐
-│ HEADER                                          │
-├─────────────────────────────────────────────────┤
-│ Breadcrumb > Categoria                          │
-├──────────────┬──────────────────────────────────┤
-│ FILTROS      │ GRID DE PRODUTOS                 │
-│ - Categoria  │ [IMG] [IMG] [IMG] [IMG]          │
-│ - Preço      │ [IMG] [IMG] [IMG] [IMG]          │
-│ (se logado)  │                                  │
-│ - Material   │ Paginação                         │
-│ - Cor        │                                  │
-└──────────────┴──────────────────────────────────┘
-│ FOOTER                                          │
-└─────────────────────────────────────────────────┘
-```
+**`posts`** — Blog
 
-### PRODUTO INDIVIDUAL (single-product.php)
-```
-┌─────────────────────────────────────────────────┐
-│ HEADER                                          │
-├─────────────────────────────────────────────────┤
-│ Breadcrumb > Categoria > Produto                │
-├─────────────────────┬───────────────────────────┤
-│  GALERIA DE IMAGENS  │ DADOS DO PRODUTO          │
-│  [IMG] [IMG] [IMG]   │ Nome                      │
-│                      │ SKU: TEX-001              │
-│                      │ Categoria                 │
-│                      │ Preço (se aprovado)        │
-│                      │ [QTY] + [COMPRAR]          │
-│                      │ (se aprovado)             │
-│                      │                           │
-│                      │ OU                        │
-│                      │ "Faça cadastro B2B"       │
-│                      │ (se não aprovado)         │
-├─────────────────────┴───────────────────────────┤
-│ DESCRIÇÃO COMPLETA                               │
-├─────────────────────────────────────────────────┤
-│ INFORMAÇÕES ADICIONAIS / TABELA                  │
-├─────────────────────────────────────────────────┤
-│ PRODUTOS RELACIONADOS                            │
-│  [IMG] [IMG] [IMG] [IMG]                        │
-├─────────────────────────────────────────────────┤
-│ FOOTER                                          │
-└─────────────────────────────────────────────────┘
-```
+| Coluna | Tipo | Descrição |
+|--------|------|-----------|
+| id | UUID | PK |
+| title | text | Título |
+| content | text | Conteúdo completo |
+| excerpt | text | Resumo |
+| category | text | Categoria do post |
+| image_url | text | Imagem de capa |
+| created_at | timestamptz | Data de publicação |
 
-### CADASTRO B2B (page-cadastro-b2b.php)
-```
-┌─────────────────────────────────────────────────┐
-│ HEADER                                          │
-├─────────────────────────────────────────────────┤
-│ TÍTULO: Cadastro B2B - Distribuidor Texhaus      │
-│                                                 │
-│ "Faça parte da rede Texhaus e tenha acesso       │
-│  a preços e condições especiais para             │
-│  profissionais do setor."                        │
-│                                                 │
-│ ┌─────────────────────────────────────────────┐ │
-│ │ Nome Completo*  [_________________________] │ │
-│ │ Empresa*        [_________________________] │ │
-│ │ CNPJ*           [_________________________] │ │
-│ │ E-mail*         [_________________________] │ │
-│ │ Telefone/Whats* [_________________________] │ │
-│ │ Cidade          [_________________________] │ │
-│ │ Estado          [UF ▼]                      │ │
-│ │ Tipo de Cliente:                             │ │
-│ │ ( ) Lojista  ( ) Arquiteto                   │ │
-│ │ ( ) Decorador ( ) Instalador                 │ │
-│ │ ( ) Distribuidor ( ) Outro                   │ │
-│ │                                              │ │
-│ │ [✓] Aceito os Termos e Condições             │ │
-│ │                                              │ │
-│ │ [CADASTRAR]                                  │ │
-│ └─────────────────────────────────────────────┘ │
-│                                                 │
-│ "Após o cadastro, você receberá um e-mail        │
-│  de confirmação. Seu acesso será liberado        │
-│  após aprovação da nossa equipe."               │
-├─────────────────────────────────────────────────┤
-│ FOOTER                                          │
-└─────────────────────────────────────────────────┘
-```
+**`contact_submissions`** — Formulário de contato
 
-### MINHA CONTA
-```
-┌─────────────────────────────────────────────────┐
-│ HEADER                                          │
-├─────────────────────────────────────────────────┤
-│ MINHA CONTA                                     │
-│                                                 │
-│ ┌─────────────────────────────────────────────┐ │
-│ │ Dashboard  │ Seja bem-vindo!                 │ │
-│ │ Pedidos    │ Seu cadastro está:              │ │
-│ │ Endereços  │ [APROVADO] / [AGUARDANDO]       │ │
-│ │ Detalhes   │                                 │ │
-│ │ Senha      │ Último pedido: #0001            │ │
-│ └────────────┴────────────────────────────────┘ │
-├─────────────────────────────────────────────────┤
-│ FOOTER                                          │
-└─────────────────────────────────────────────────┘
-```
+| Coluna | Tipo | Descrição |
+|--------|------|-----------|
+| id | UUID | PK |
+| name | text | Nome |
+| email | text | Email |
+| phone | text | Telefone |
+| subject | text | Assunto |
+| message | text | Mensagem |
+| created_at | timestamptz | Data de envio |
+
+**`shipping_methods`** — Métodos de frete
+
+| Coluna | Tipo | Descrição |
+|--------|------|-----------|
+| id | UUID | PK |
+| name | text | Nome do frete |
+| description | text | Descrição |
+| price | numeric | Valor do frete |
+| regions | text | JSON array de regiões atendidas |
+| estimated_days | text | Prazo estimado |
+| sort_order | int | Ordem de exibição |
+| active | boolean | Ativo/inativo |
+
+**`payment_methods`** — Métodos de pagamento
+
+| Coluna | Tipo | Descrição |
+|--------|------|-----------|
+| id | UUID | PK |
+| name | text | Nome (Pix, Cartão, Boleto) |
+| description | text | Descrição |
+| icon | text | Ícone (emoji ou classe) |
+| discount_text | text | Texto de desconto (ex: "5% off no Pix") |
+| sort_order | int | Ordem de exibição |
+| active | boolean | Ativo/inativo |
 
 ---
 
-## 4. FLUXO DE CADASTRO E APROVAÇÃO B2B
+## API REST — Rotas Completas
 
-```
-┌──────────┐     ┌──────────┐     ┌──────────┐     ┌──────────┐
-│ Visitante│────>│ Cadastro │────>│ Aguardando│────>│ Aprovado │
-│  (anon)  │     │  B2B     │     │ Aprovação │     │  B2B     │
-└──────────┘     └──────────┘     └──────────┘     └──────────┘
-                                                          │
-                     ┌──────────┐                         │
-                     │  Admin   │<─────── E-mail de       │
-                     │  aprova  │        notificação      │
-                     │  ou nega │                         │
-                     └────┬─────┘                         │
-                          │                               │
-                          v                               v
-                   ┌──────────┐                    ┌──────────┐
-                   │  Negado  │                    │  Pode:   │
-                   │          │                    │ Ver preços│
-                   │  Motivo: │                    │ Comprar  │
-                   │  "CNPJ   │                    │ Carrinho │
-                   │  inválido"│                   │ Checkout │
-                   └──────────┘                    └──────────┘
-```
+### Autenticação — `/api/auth`
 
-### Detalhamento do fluxo:
+| Método | Rota | Auth | Descrição |
+|--------|------|------|-----------|
+| POST | /register | — | Cadastro B2B. Cria usuário com role `b2b_pending`. Retorna token + user. |
+| POST | /login | — | Login com email/senha. Retorna token + user. |
+| GET | /me | Bearer | Retorna perfil completo do usuário autenticado. |
+| PUT | /password | Bearer | Altera senha (requer senha atual). |
 
-1. **Visitante** anônimo navega, vê produtos mas sem preços nem botão comprar
-2. Clica em "Solicitar Cadastro B2B" ou "Registrar-se"
-3. Preenche formulário estendido (nome, empresa, CNPJ, e-mail, tel, cidade, estado, tipo)
-4. Após submit:
-   - Usuário criado com role `b2b_pending`
-   - E-mail de confirmação enviado ao usuário
-   - E-mail de notificação enviado ao admin
-   - Redirecionado para página "Cadastro Recebido - Aguarde Aprovação"
-5. Admin recebe e-mail e acessa painel > Usuários
-6. Admin vê coluna "Status B2B" e pode:
-   - **Aprovar**: muda role para `b2b_approved`, e-mail automático para usuário liberando acesso
-   - **Reprovar**: muda role para `b2b_rejected`, opção de enviar motivo
-7. Usuário aprovado faz login e vê preços, pode comprar
+### Produtos — `/api/products`
 
-### Roles personalizadas:
-- `b2b_pending` - Cadastrado, aguardando aprovação
-- `b2b_approved` - Aprovado, acesso total aos preços
-- `b2b_rejected` - Reprovado, não pode comprar
+| Método | Rota | Auth | Descrição |
+|--------|------|------|-----------|
+| GET | / | — | Lista todos os produtos (inclui drafts). |
+| GET | /published | — | Lista apenas produtos com status `published`. |
+| GET | /search?q= | — | Busca textual (ILIKE em name + description). Apenas published. Limit 20. |
+| GET | /:id | — | Detalhe de um produto por UUID. |
+| POST | / | Admin | Criar produto. |
+| PUT | /:id | Admin | Atualizar produto. |
+| DELETE | /:id | Admin | Excluir produto (cascata: exclui variações primeiro). |
+| GET | /:id/variations | — | Lista variações de um produto. |
+| PUT | /:id/variations | Admin | Upsert de variações (delete-all + re-insert em transação bulk). |
 
----
+### Categorias — `/api/categories`
 
-## 5. CONFIGURAÇÃO IDEAL DO WOOCOMMERCE
+| Método | Rota | Auth | Descrição |
+|--------|------|------|-----------|
+| GET | / | — | Lista todas as categorias ordenadas por sort_order. |
+| POST | / | Admin | Criar categoria (slug normalizado automaticamente). |
+| PUT | /:id | Admin | Atualizar categoria. |
+| DELETE | /:id | Admin | Excluir categoria (bloqueado se tiver subcategorias). |
 
-### Configurações Gerais
-```
-WooCommerce > Configurações:
+### Pedidos — `/api/orders`
 
-Geral:
-- Base do país: Brasil
-- Moeda: Real (R$)
-- Posição do símbolo: R$250,00
-- Separador decimal: ,
-- Separador de milhar: .
+| Método | Rota | Auth | Descrição |
+|--------|------|------|-----------|
+| GET | / | Admin | Lista todos os pedidos. |
+| GET | /my | Bearer | Lista pedidos do usuário autenticado. |
+| POST | / | Bearer | Criar pedido (transação: insere order + order_items, snapshots de endereço). |
+| GET | /:id | Bearer | Detalhe do pedido (admin vê qualquer, user vê só os seus). |
+| PUT | /:id/status | Admin | Atualizar status do pedido. |
 
-Produtos:
-- Página da loja: /loja/
-- Página do carrinho: /carrinho/
-- Página de finalização: /finalizar-compra/
-- Página minha conta: /minha-conta/
-- Adicionar ao carrinho: Redirect to cart
-- Avaliações: Desabilitar (B2B)
-- Preços: exibir com taxas (incluir impostos)
+### Perfis — `/api/profiles`
 
-Inventário:
-- Gerenciar estoque: Sim
-- Notificações de estoque baixo: Sim
-- Estoque para baixo: 5
-- Sem estoque: Não visível
+| Método | Rota | Auth | Descrição |
+|--------|------|------|-----------|
+| GET | / | Admin | Lista todos os perfis (exclui admins). |
+| PUT | /:id/role | Admin | Alterar role de um perfil (aprovar/rejeitar B2B). |
 
-Entrega:
-- Calcular frete: Sim (após endereço)
-- Local de entrega: Padrão
-- Classes de frete: Ativar
+### Blog — `/api/posts`
 
-Contas e Privacidade:
-- Permitir cadastro: Sim
-- Gerar senha automaticamente: Sim
-- Após cadastro: Redirecionar para "Minha Conta"
-- Política de privacidade: Selecionar página
-- Termos: Selecionar página
-- LGPD: Ativar consentimento
-```
+| Método | Rota | Auth | Descrição |
+|--------|------|------|-----------|
+| GET | / | — | Lista todos os posts. |
+| GET | /:id | — | Detalhe de um post. |
+| POST | / | Admin | Criar post. |
+| PUT | /:id | Admin | Atualizar post. |
+| DELETE | /:id | Admin | Excluir post. |
 
-### Campos de Checkout (Checkout Fields for Brazil)
-```
-- Tipo de Pessoa: Jurídica (padrão) / Física
-- CNPJ/CPF: Obrigatório
-- IE: Opcional
-- RG: Opcional
-- Nome completo
-- Endereço: Rua, Número, Complemento, Bairro
-- CEP: Com busca automática (ViaCEP)
-- Cidade/Estado
-- Telefone/WhatsApp
-```
+### Contato — `/api/contact`
 
-### Métodos de Pagamento
-| Método | Gateway | Configuração |
-|--------|---------|-------------|
-| **Pix** | Mercado Pago | Desconto de 5% no Pix |
-| **Cartão de Crédito** | Mercado Pago | Parcelamento em até 12x |
-| **Boleto Bancário** | Mercado Pago | Vencimento em 3 dias úteis |
-| **Pix Parcelado** | Mercado Pago | Opcional |
+| Método | Rota | Descrição |
+|--------|------|-----------|
+| POST | / | Envia formulário de contato (salva na tabela `contact_submissions`). |
 
-### Métodos de Entrega
-| Método | Configuração |
-|--------|-------------|
-| **Retirada na Empresa** | Grátis - endereço da Texhaus |
-| **Frete Fixo** | Por região (SP, Sudeste, Demais) |
-| **Correios (futuro)** | Através do plugin Brazilian Market |
-| **Melhor Envio (futuro)** | Integração futura |
-| **Transportadora (futuro)** | Cotação manual |
+### Fretes — `/api/shipping-methods`
+
+| Método | Rota | Auth | Descrição |
+|--------|------|------|-----------|
+| GET | / | — | Lista fretes ativos (admin com `?all=true` vê todos). |
+| POST | / | Admin | Criar método de frete. |
+| PUT | /:id | Admin | Atualizar método de frete. |
+| DELETE | /:id | Admin | Excluir método de frete. |
+
+### Pagamentos — `/api/payment-methods`
+
+| Método | Rota | Auth | Descrição |
+|--------|------|------|-----------|
+| GET | / | — | Lista pagamentos ativos (admin com `?all=true` vê todos). |
+| POST | / | Admin | Criar método de pagamento. |
+| PUT | /:id | Admin | Atualizar método de pagamento. |
+| DELETE | /:id | Admin | Excluir método de pagamento. |
+
+### Health Check
+
+| Método | Rota | Descrição |
+|--------|------|-----------|
+| GET | /api | `{ status: "ok", message: "Texhaus B2B API" }` |
+| GET | /api/health | `{ status: "ok", timestamp: "..." }` |
 
 ---
 
-## 6. MEIOS DE PAGAMENTO BRASILEIROS
+## Sistema de Roles e Autenticação
 
-### Gateway Principal: Mercado Pago (Recomendado)
-- **Maior adoção no Brasil**
-- **Pix**: Pagamento instantâneo, liquidação imediata
-- **Cartão de Crédito**: Parcelamento c/ ou s/ juros
-- **Boleto**: Vencimento flexível
-- **Checkout Transparente**: Sem redirecionamento
-- **Antifraude**: Incluso
-- **Comissão**: ~4% por transação
-- Plugin oficial WooCommerce: `woocommerce-mercadopago`
+### Roles
 
-### Configuração de Parcelamento Sugerida
+| Role | Permissões |
+|------|-----------|
+| `admin` | Acesso total: painel admin, CRUD produtos/categorias/posts, aprovar clientes, gerenciar pedidos, ver preços |
+| `b2b_pending` | Login permitido, **não vê preços**, não compra. Aguardando aprovação do admin. |
+| `b2b_approved` | Login permitido, **vê preços**, pode comprar e fazer checkout. |
+| `b2b_rejected` | Login permitido, **não vê preços**, não compra. Cadastro reprovado. |
+
+### Fluxo de Cadastro B2B
+
 ```
-Parcelamento sem juros:
-- 1x: Preço normal
-- 2x: Preço normal
-- 3x: Preço normal
-- 4x a 6x: Preço normal
-- 7x a 12x: Preço normal
-
-Parcelamento com juros (opcional):
-- Acima de 6x: 1,99% a.m.
+Visitante → Preenche formulário em /cadastro
+         → POST /api/auth/register → role = b2b_pending
+         → Redirecionado para /cadastro/sucesso
+         → Admin acessa /admin/aprovacoes ou /admin/clientes
+         → Admin aprova (b2b_approved) ou rejeita (b2b_rejected)
+         → Usuário aprovado faz login e vê preços/pode comprar
 ```
 
-### Desconto no Pix
-```
-Pix à vista: 5% de desconto
-Configurar em: WooCommerce > Mercado Pago > Pix
-```
+### Middleware de Autenticação
 
-### Alternativas de Gateway
-| Gateway | Pix | Cartão | Boleto | Recorrência | Comissão |
-|---------|-----|--------|--------|-------------|----------|
-| **PagSeguro/PagBank** | Sim | Sim | Sim | Sim | ~3,5% |
-| **Pagar.me** | Sim | Sim | Sim | Sim | ~3,8% |
-| **Asaas** | Sim | Sim | Sim | Sim | ~3,5% |
-| **Yapay** | Sim | Sim | Sim | Sim | ~3,2% |
+- **`requireAuth`**: Valida token JWT (`Authorization: Bearer <token>`), extrai `id`, `email`, `role`, valida que role está na lista `VALID_ROLES`. Injeta `req.user`.
+- **`requireAdmin`**: Encadeia `requireAuth` e verifica `req.user.role === 'admin'`.
+- **`generateToken`**: Gera JWT com payload `{ id, email, role }`, expira em 7 dias.
 
 ---
 
-## 7. CHECKLIST DE IMPLEMENTAÇÃO
+## Frontend — Páginas
 
-### Fase 1: Infraestrutura
-- [ ] Contratar hospedagem WordPress (recomendado: HostGator, GoDaddy, ou hospedagem dedicada)
-- [ ] Configurar domínio (texhaus.com.br ou subdomínio b2b.texhaus.com.br)
-- [ ] Instalar certificado SSL (Let's Encrypt ou pago)
-- [ ] Instalar WordPress (última versão)
-- [ ] Configurar PHP 8.0+ e MySQL 8.0+
-- [ ] Configurar CDN (Cloudflare) para performance
-- [ ] Backup automático configurado
+### Rotas (React Router)
 
-### Fase 2: Instalação de Plugins
-- [ ] Instalar WooCommerce
-- [ ] Instalar Brazilian Market on WooCommerce
-- [ ] Instalar WooCommerce Extra Checkout Fields for Brazil
-- [ ] Instalar Mercado Pago WooCommerce
-- [ ] Instalar Yoast SEO
-- [ ] Instalar Wordfence Security
-- [ ] Instalar WP Rocket (cache)
-- [ ] Instalar ACF (Advanced Custom Fields)
-- [ ] Instalar Loco Translate
-- [ ] Instalar plugin de WhatsApp (recomendado: Buttonizer ou similar)
-- [ ] Instalar plugin de LGPD (recomendado: CookieYes ou GDPR Cookie Consent)
+| Rota | Componente | Descrição |
+|------|-----------|-----------|
+| `/` | Home | Hero banner + grid de produtos publicados + diferencais |
+| `/loja` | Catalog | Catálogo com filtros (categoria, busca local, ordenação) |
+| `/sobre-nos` | About | Página institucional |
+| `/contato` | Contact | Formulário de contato (POST /api/contact) |
+| `/blog` | Blog | Listagem de posts do blog |
+| `/blog/:id` | BlogPost | Post individual |
+| `/produto/:id` | ProductDetail | Detalhe do produto + galeria + variações + compra |
+| `/cart` | Cart | Carrinho de compras (gated: só B2B aprovado) |
+| `/checkout` | Checkout | Finalização de pedido (gated: só B2B aprovado) |
+| `/account` | Account | Minha Conta: perfil, alterar senha, histórico de pedidos |
+| `/admin/*` | Admin | Painel administrativo com sub-rotas internas |
+| `/cadastro` | Register | Formulário de cadastro B2B completo |
+| `/cadastro/sucesso` | RegisterSuccess | Confirmação de envio do cadastro |
+| `/login` | Login | Página de login |
+| `/politica-de-privacidade` | Privacy | Política de privacidade (LGPD) |
+| `/trocas-e-devolucoes` | Exchanges | Política de trocas e devoluções |
+| `/politica-de-envios` | Shipping | Política de envios |
+| `/termos-e-condicoes` | Terms | Termos e condições |
 
-### Fase 3: Tema e Personalização
-- [ ] Instalar e ativar tema Texhaus B2B
-- [ ] Configurar identidade visual (cores, tipografia, logo)
-- [ ] Criar estrutura de menus
-- [ ] Configurar header com logo, menu, ícones
-- [ ] Configurar footer completo
-- [ ] Testar responsividade (mobile, tablet, desktop)
-- [ ] Configurar widgets (sidebar, blog)
+Todas as páginas usam lazy loading com `<Suspense fallback={<Loading />}>`.
 
-### Fase 4: Produtos e Categorias
-- [ ] Criar hierarquia de categorias
-- [ ] Importar/cadastrar produtos via CSV
-- [ ] Adicionar imagens dos produtos (alta qualidade)
-- [ ] Configurar variações (cor, tamanho, material)
-- [ ] Configurar SKU para cada produto
-- [ ] Configurar estoque
-- [ ] Configurar atributos (cor, largura, material, etc.)
-- [ ] Configurar preços (visíveis apenas para B2B aprovado)
+### Contextos (State Management)
 
-### Fase 5: Sistema B2B
-- [ ] Ativar plugin texhaus-b2b-utils
-- [ ] Testar cadastro com formulário estendido
-- [ ] Testar role b2b_pending
-- [ ] Testar notificação por e-mail ao admin
-- [ ] Testar aprovação manual no painel
-- [ ] Testar role b2b_approved com acesso a preços
-- [ ] Testar role b2b_rejected (bloqueio)
-- [ ] Testar ocultação de preços para não logados
-- [ ] Testar ocultação de botão comprar
-- [ ] Testar exibição de mensagem "Faça cadastro B2B"
+| Contexto | Hook | Responsabilidade |
+|----------|------|-----------------|
+| `AuthContext` | `useAuth()` | Login/logout, perfil, roles, `isAdmin`, `isB2BApproved`, `isLoggedIn` |
+| `CartContext` | `useCart()` | Carrinho client-side, agrupamento produto+variação, `total`, `itemCount` |
+| `ToastContext` | `useToast()` | Notificações toast (success/error/info), auto-dismiss 3.5s |
 
-### Fase 6: Pagamentos
-- [ ] Configurar conta Mercado Pago
-- [ ] Configurar Pix com desconto
-- [ ] Configurar parcelamento cartão de crédito
-- [ ] Configurar boleto bancário
-- [ ] Testar fluxo completo de pagamento
-- [ ] Configurar e-mail de confirmação de pedido
-- [ ] Testar estorno/reembolso
+### Componentes Compartilhados
 
-### Fase 7: Entregas
-- [ ] Configurar retirada na empresa
-- [ ] Configurar frete fixo por região
-- [ ] Configurar cálculo de frete nos Correios (Brazilian Market)
-- [ ] Configurar campos de endereço no checkout
-- [ ] Testar cálculo de frete
-- [ ] Testar etiqueta de envio (futuro)
+| Componente | Descrição |
+|-----------|-----------|
+| `Navbar` | Barra fixa com logo, links, busca, carrinho, login modal, menu mobile |
+| `Footer` | Rodapé com links, contato, copyright |
+| `SEO` | Meta tags via react-helmet-async (title, description, og:image, twitter) |
+| `Loading` | 3 modos: spinner (simples), skeleton (cards), page (blocos de texto) |
+| `SearchBar` | Input de busca com debounce (300ms), dropdown de resultados, navegação ao clicar |
 
-### Fase 8: Conteúdo e SEO
-- [ ] Criar páginas institucionais (Sobre, Contato, Políticas)
-- [ ] Criar blog com posts iniciais
-- [ ] Configurar Yoast SEO para todas as páginas
-- [ ] Configurar Google Analytics
-- [ ] Configurar Google Search Console
-- [ ] Configurar sitemap.xml
-- [ ] Criar meta tags e descrições
-- [ ] Configurar Open Graph (redes sociais)
+### Componentes Admin
 
-### Fase 9: LGPD e Legal
-- [ ] Configurar banner de cookies (consentimento)
-- [ ] Criar política de privacidade (LGPD)
-- [ ] Criar termos e condições
-- [ ] Criar política de trocas e devoluções
-- [ ] Criar política de envios
-- [ ] Configurar formulário de contato com LGPD
-
-### Fase 10: Segurança
-- [ ] Configurar Wordfence (firewall)
-- [ ] Limitar tentativas de login
-- [ ] Configurar autenticação de dois fatores (2FA)
-- [ ] Backup automático semanal
-- [ ] Atualização automática de plugins (cuidadosa)
-- [ ] Desabilitar XML-RPC se não usado
-- [ ] Alterar prefixo wp_ do banco de dados
-
-### Fase 11: Performance
-- [ ] Configurar WP Rocket (cache)
-- [ ] Otimizar imagens (WebP, compressão)
-- [ ] Minificar CSS e JS
-- [ ] Configurar lazy loading
-- [ ] Configurar CDN (Cloudflare)
-- [ ] Testar PageSpeed (Google) - meta: 90+
-- [ ] Otimizar banco de dados
-- [ ] Configurar cache de página
-
-### Fase 12: Testes Finais
-- [ ] Testar fluxo completo: visitante > cadastro > aprovação > compra
-- [ ] Testar em Chrome, Firefox, Safari, Edge
-- [ ] Testar em mobile (iOS e Android)
-- [ ] Testar checkout com cada forma de pagamento
-- [ ] Testar e-mails transacionais
-- [ ] Testar cálculo de frete
-- [ ] Testar busca de produtos
-- [ ] Testar formulário de contato
-- [ ] Testar LGPD (cookie banner, consentimento)
-- [ ] Testar velocidade de carregamento
-- [ ] Testar 404 e redirecionamentos
-
-### Fase 13: Lançamento
-- [ ] Apontar DNS para nova hospedagem
-- [ ] Verificar SSL
-- [ ] Verificar e-mails transacionais
-- [ ] Backup completo antes do go-live
-- [ ] Monitorar primeiras 48 horas
-- [ ] Configurar monitoramento uptime
+| Componente | Descrição |
+|-----------|-----------|
+| `AdminClients` | Tabela de clientes B2B, filtro por role, botões aprovar/rejeitar |
+| `AdminOrders` | Tabela de pedidos, troca de status, visualização de itens |
+| `AdminCategories` | CRUD de categorias (nome, slug, parent_id) com hierarquia visual |
+| `AdminApprovals` | Dashboard de aprovações pendentes com ações em lote |
+| `AdminProducts` | CRUD de produtos com modal (ProductModal) |
+| `AdminPosts` | CRUD de posts do blog |
+| `ProductModal` | Modal reutilizável para criar/editar produto (formulário completo) |
 
 ---
 
-## ARQUIVOS DO TEMA
+## Configuração do Servidor
 
-```
-wp-content/themes/texhaus-b2b/
-├── style.css                  # Cabeçalho do tema
-├── functions.php              # Funções do tema + WooCommerce + B2B
-├── index.php                  # Template fallback
-├── front-page.php             # Página inicial
-├── header.php                 # Header (logo, menu, ícones)
-├── footer.php                 # Footer (newsletter, contato, links)
-├── page.php                   # Página padrão
-├── single.php                 # Post individual (blog)
-├── archive.php                # Arquivo de posts (blog)
-├── single-product.php         # Produto individual
-├── archive-product.php        # Lista de produtos
-├── taxonomy-product-cat.php   # Categoria de produto
-├── page-cadastro-b2b.php      # Página de cadastro B2B
-├── page-contato.php           # Página de contato
-├── 404.php                    # Página 404
-├── search.php                 # Resultados de busca
-├── sidebar.php                # Sidebar
-├── inc/
-│   ├── b2b-registration.php   # Lógica de cadastro B2B
-│   ├── b2b-approval.php       # Lógica de aprovação
-│   ├── b2b-price-control.php  # Controle de visibilidade de preços
-│   └── woocommerce-overrides.php # Overrides do WooCommerce
-├── template-parts/
-│   ├── content-none.php
-│   ├── content-page.php
-│   ├── content-single.php
-│   ├── product-loop.php
-│   ├── categories-grid.php
-│   ├── blog-preview.php
-│   ├── newsletter-form.php
-│   └── b2b-register-form.php
-├── assets/
-│   ├── css/
-│   │   ├── texhaus-theme.css
-│   │   └── texhaus-woocommerce.css
-│   └── js/
-│       ├── texhaus-theme.js
-│       └── texhaus-woocommerce.js
-└── languages/
-    └── texhaus-b2b.pot
+### Variáveis de Ambiente (`server/.env`)
 
-wp-content/plugins/texhaus-b2b-utils/
-├── texhaus-b2b-utils.php       # Plugin principal
-├── includes/
-│   ├── class-b2b-user-roles.php
-│   ├── class-b2b-registration.php
-│   ├── class-b2b-approval.php
-│   ├── class-b2b-price-control.php
-│   └── class-b2b-admin.php
-└── assets/
-    └── css/
-        └── admin.css
-```
+| Variável | Descrição | Default |
+|----------|-----------|---------|
+| `PORT` | Porta do servidor | `5100` |
+| `DATABASE_URL` | String de conexão PostgreSQL | — (obrigatório) |
+| `JWT_SECRET` | Segredo para assinatura JWT | — (obrigatório) |
+| `ALLOWED_ORIGINS` | Origens CORS (separadas por vírgula) | `http://localhost:5173` |
+| `RATE_LIMIT_WINDOW_MS` | Janela do rate limiter (ms) | `900000` (15 min) |
+| `RATE_LIMIT_MAX` | Máximo de requisições por janela | `100` |
+
+### Segurança
+
+- **Rate Limiting**: 100 requisições por 15 minutos em todas as rotas `/api`. Mensagem em português. Método OPTIONS é ignorado.
+- **CORS**: Origens configuráveis via env `ALLOWED_ORIGINS`. Credenciais habilitadas.
+- **JWT**: Tokens assinados com `JWT_SECRET`, expiram em 7 dias. Payload validado com `VALID_ROLES` set.
+- **Senhas**: Hash bcrypt com 10 rounds. Nunca retornadas nas queries (coluna `password_hash` é excluída dos SELECTs de perfil).
+- **Body Parser**: `express.json({ limit: '10mb' })` para upload de imagens em base64.
+
+---
+
+## Scripts npm
+
+| Comando | Descrição |
+|---------|-----------|
+| `npm run dev` | Inicia servidor de desenvolvimento Vite (frontend) |
+| `npm run build` | `tsc -b && vite build` — compila TypeScript + build de produção |
+| `npm start` | `node server.js` — inicia servidor Express em produção |
+| `npm run lint` | `eslint .` — linting do código |
+| `npm run preview` | `vite preview` — preview do build de produção |
+
+O servidor Express é iniciado separadamente com `npm start` (roda em `/server.js` que carrega `server/src/index.ts` compilado).
+
+---
+
+## UI/UX — Convenções de Estilo
+
+### Cores (CSS Custom Properties)
+
+| Variável | Valor | Uso |
+|----------|-------|-----|
+| `--color-primary` | `#1a1a1a` | Textos principais, botões outline |
+| `--color-primary-dark` | `#000000` | — |
+| `--color-accent` | `#c8a86e` | Cor dourada de destaque (botões, links, badges) |
+| `--color-accent-hover` | `#b8954d` | Hover do accent |
+| `--color-text` | `#333333` | Texto corpo |
+| `--color-text-light` | `#666666` | Texto secundário |
+| `--color-bg` | `#ffffff` | Fundo principal |
+| `--color-bg-light` | `#f8f8f8` | Fundo alternativo |
+| `--color-bg-dark` | `#1a1a1a` | Fundo escuro |
+| `--color-border` | `#e5e5e5` | Bordas |
+| `--color-error` | `#f44336` | Erro (logout button) |
+
+### Tipografia
+
+- Fonte principal: Montserrat (Google Fonts) com fallback para system fonts
+- Headings: `font-weight: 600`, `line-height: 1.2`, uppercase em títulos
+- Botões: `0.85rem`, uppercase, `letter-spacing: 1px`, `font-weight: 600`
+
+### Classes de Botão
+
+| Classe | Aparência |
+|--------|-----------|
+| `.btn-primary` | Fundo accent, texto branco, hover inverte (outline) |
+| `.btn-secondary` | Outline com cor primary, hover preenche |
+| `.cadastro-link` | Outline com cor accent (exclusivo da navbar) |
+
+---
+
+## Funcionalidades Implementadas
+
+### Busca de Produtos
+- Endpoint `GET /api/products/search?q=termo` (ILIKE em name + description)
+- Componente `SearchBar` com debounce 300ms, dropdown de resultados com imagem
+- Teclado: Enter seleciona primeiro resultado, Escape fecha
+- Clique fora fecha dropdown
+- Presente no menu desktop e mobile
+
+### B2B Price Gating
+- Preços visíveis apenas para `b2b_approved` e `admin`
+- Usuários não logados veem overlay "Área Restrita" nos produtos
+- Usuários `b2b_pending` veem mensagem "Aguardando aprovação"
+- Carrinho e checkout bloqueados para não-aprovados
+
+### Produtos com Variações
+- Cada produto pode ter múltiplas variações (cor, tamanho, etc.)
+- Cada variação tem: nome, SKU, price_modifier, estoque próprio, imagem
+- Seletor de variação na página de produto
+- Carrinho agrupa por combinação produto+variação
+
+### Sistema de Pedidos
+- Criação com transação PostgreSQL (BEGIN/COMMIT/ROLLBACK)
+- Snapshots de dados do cliente e endereço no momento do pedido
+- Status workflow: pending → confirmed → shipped → delivered / cancelled
+- Admin pode trocar status, usuário vê seus próprios pedidos
+
+### Categorias Hierárquicas
+- Suporte a parent_id para subcategorias
+- Slug normalizado automaticamente (lowercase, espaços → hifens)
+- Proteção contra exclusão de categorias com filhos
+- Exibição hierárquica na página de catálogo
+
+### Upload de Arquivos
+- Suporte via multer no backend (`server/src/upload.ts`)
+- Extensões permitidas: jpg, jpeg, png, gif, webp, svg, pdf
+- Diretório `uploads/` servido estaticamente
+
+---
+
+## Observações para Desenvolvimento Futuro
+
+1. **TypeScript estrito**: O projeto usa `tsc -b` com project references. O build falha em qualquer erro de tipo. Sempre rode `npm run build` antes de commitar.
+2. **CSS em App.css**: Todos os estilos (exceto reset e botões base) estão em `src/App.css` (~3100 linhas). Não há CSS modules ou frameworks.
+3. **Lazy loading**: Todas as páginas são lazy-loaded. Adicionar nova página requer atualizar `App.tsx`.
+4. **Admin sub-rotas**: O componente `Admin` usa `Routes` interno com sub-rotas. Ver `src/pages/Admin.tsx` para a estrutura.
+5. **API Client**: `src/lib/api.ts` é um wrapper genérico que auto-anexa token Bearer. Use `api<T>(path, options)` para todas as chamadas.
+6. **Validação**: Servidor usa Zod com `validatePayload()`. Schemas em `server/src/validators/index.ts`. Tipos TypeScript inferidos dos schemas.
+7. **Banco de Dados**: Conexão via `pg.Pool` em `server/src/db.ts`. Use `query()` para queries simples, `getClient()` para transações.
+8. **Rate Limiting**: Configurável via env. Padrão: 100 req / 15 min. Aplica-se a todas as rotas `/api`.
+9. **Graph do Projeto**: O diretório `graphify-out/` contém um knowledge graph do código (281 nós, 613 arestas, 22 comunidades). Leia `graphify-out/GRAPH_REPORT.md` para navegação rápida entre módulos.

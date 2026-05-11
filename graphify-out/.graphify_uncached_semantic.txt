@@ -1,0 +1,12 @@
+/opt/TEXHAUS/TEXHAUS-B2B/README.md
+/opt/TEXHAUS/TEXHAUS-B2B/PROJETO.md
+/opt/TEXHAUS/TEXHAUS-B2B/index.html
+/opt/TEXHAUS/TEXHAUS-B2B/src/assets/vite.svg
+/opt/TEXHAUS/TEXHAUS-B2B/src/assets/hero.png
+/opt/TEXHAUS/TEXHAUS-B2B/src/assets/react.svg
+/opt/TEXHAUS/TEXHAUS-B2B/public/icons.svg
+/opt/TEXHAUS/TEXHAUS-B2B/public/favicon.svg
+/opt/TEXHAUS/TEXHAUS-B2B/public/uploads/droo1gc2g0gyu5frhi7drwun9.jpg
+/opt/TEXHAUS/TEXHAUS-B2B/public/uploads/zvzyx1hmfenbk87s5mbhsty8t.jpg
+/opt/TEXHAUS/TEXHAUS-B2B/public/uploads/jaacw1pfscn76srksqbuc9bzr.jpg
+/opt/TEXHAUS/TEXHAUS-B2B/public/uploads/izcmjsf6xp5pftipurkn1x87w.jpg

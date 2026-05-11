@@ -1,20 +1,22 @@
 import { useState, useEffect } from 'react';
 import { api } from '../../lib/api';
 import { useToast } from '../../contexts/ToastContext';
-import type { Profile } from '../../contexts/AuthContext';
+import type { Profile, UserRole } from '../../contexts/AuthContext';
 
-type FilterType = 'all' | 'b2b_pending' | 'b2b_approved' | 'b2b_rejected';
+type FilterType = 'all' | UserRole;
 
-const roleLabel: Record<string, string> = {
+const roleLabel: Record<UserRole, string> = {
   b2b_pending: 'Pendente',
   b2b_approved: 'Aprovado',
   b2b_rejected: 'Rejeitado',
+  admin: 'Administrador',
 };
 
-const roleBadge: Record<string, string> = {
+const roleBadge: Record<UserRole, string> = {
   b2b_pending: 'pending',
   b2b_approved: 'approved',
   b2b_rejected: 'rejected',
+  admin: 'admin',
 };
 
 export function AdminClients() {
@@ -37,13 +39,13 @@ export function AdminClients() {
 
   useEffect(() => { fetchClients(); }, []);
 
-  const handleUpdateRole = async (id: string, role: string) => {
+  const handleUpdateRole = async (id: string, role: UserRole) => {
     try {
       await api(`/profiles/${id}/role`, {
         method: 'PUT',
         body: JSON.stringify({ role }),
       });
-      setClients(prev => prev.map(c => c.id === id ? { ...c, role: role as Profile['role'] } : c));
+      setClients(prev => prev.map(c => c.id === id ? { ...c, role: role as UserRole } : c));
       toast(role === 'b2b_approved' ? 'Cliente aprovado!' : 'Cliente rejeitado.', role === 'b2b_approved' ? 'success' : 'info');
     } catch (err) {
       toast('Erro: ' + (err instanceof Error ? err.message : ''), 'error');

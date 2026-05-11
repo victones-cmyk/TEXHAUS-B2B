@@ -1,7 +1,7 @@
 import { Router, Response } from 'express';
 import bcrypt from 'bcryptjs';
 import { query } from '../db.js';
-import { generateToken, requireAuth, AuthRequest } from '../middleware/auth.js';
+import { generateToken, requireAuth, AuthRequest, type Role } from '../middleware/auth.js';
 import { loginSchema, registerSchema, changePasswordSchema } from '../validators/index.js';
 import { validatePayload } from '../utils/validation.js';
 
@@ -45,7 +45,7 @@ router.post('/register', async (req: AuthRequest, res: Response) => {
     );
 
     const user = result.rows[0];
-    const token = generateToken(user);
+    const token = generateToken({ id: user.id, email: user.email, role: user.role as Role });
 
     res.status(201).json({ token, user });
   } catch (err: unknown) {
@@ -79,7 +79,7 @@ router.post('/login', async (req: AuthRequest, res: Response) => {
       return;
     }
 
-    const token = generateToken({ id: user.id, email: user.email, role: user.role });
+    const token = generateToken({ id: user.id, email: user.email, role: user.role as Role });
 
     res.json({
       token,

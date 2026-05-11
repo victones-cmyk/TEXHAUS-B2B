@@ -3,6 +3,8 @@ import { createContext, useContext, useEffect, useState } from 'react';
 import type { ReactNode } from 'react';
 import { api, setToken, getToken } from '../lib/api';
 
+export type UserRole = 'admin' | 'b2b_pending' | 'b2b_approved' | 'b2b_rejected';
+
 export interface Profile {
   id: string;
   email: string;
@@ -13,14 +15,14 @@ export interface Profile {
   customer_type: string;
   city: string;
   state: string;
-  role: 'admin' | 'b2b_pending' | 'b2b_approved' | 'b2b_rejected';
+  role: UserRole;
   created_at: string;
 }
 
 export interface User {
   id: string;
   email: string;
-  role: string;
+  role: UserRole;
 }
 
 interface SignUpData {
@@ -75,6 +77,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       const p = await api<Profile>('/auth/me');
       setProfile(p);
+      setUser({ id: p.id, email: p.email, role: p.role });
     } catch {
       setProfile(null);
     }
@@ -83,11 +86,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     const token = getToken();
     if (token) {
-      api<User>('/auth/me')
-        .then((u) => {
-          setUser(u);
-          return loadProfile();
-        })
+      loadProfile()
         .catch(() => {
           setToken(null);
           setUser(null);
@@ -145,8 +144,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         user,
         profile,
         isLoggedIn: !!user,
-        isAdmin: profile?.role === 'admin',
-        isB2BApproved: profile?.role === 'b2b_approved' || profile?.role === 'admin',
+        isAdmin: (profile?.role ?? user?.role) === 'admin',
+        isB2BApproved: (profile?.role ?? user?.role) === 'b2b_approved' || (profile?.role ?? user?.role) === 'admin',
         loading,
         signIn,
         signUp,

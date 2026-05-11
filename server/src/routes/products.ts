@@ -63,6 +63,30 @@ router.get('/published', async (_req: Request, res: Response) => {
   }
 });
 
+router.get('/search', async (req: Request, res: Response) => {
+  try {
+    const q = (typeof req.query.q === 'string' ? req.query.q : '').trim();
+    if (!q) {
+      res.json([]);
+      return;
+    }
+
+    const pattern = `%${q}%`;
+    const result = await query(
+      `SELECT * FROM products
+       WHERE status = 'published'
+         AND (name ILIKE $1 OR description ILIKE $2)
+       ORDER BY created_at DESC
+       LIMIT 20`,
+      [pattern, pattern],
+    );
+    res.json(result.rows.map(normalizeProductRow));
+  } catch (err: unknown) {
+    console.error('Product search error:', err);
+    res.status(500).json({ message: 'Erro ao buscar produtos' });
+  }
+});
+
 router.get('/:id', async (req: Request, res: Response) => {
   try {
     const params = validatePayload(idParamSchema, req.params, res, 'ID inválido');

@@ -10,15 +10,19 @@ if (!rawJwtSecret) {
 
 const JWT_SECRET: string = rawJwtSecret;
 
+export type Role = 'admin' | 'b2b_pending' | 'b2b_approved' | 'b2b_rejected';
+
 export interface AuthUser {
   id: string;
   email: string;
-  role: string;
+  role: Role;
 }
 
 export interface AuthRequest extends Request {
   user?: AuthUser;
 }
+
+const VALID_ROLES = new Set<Role>(['admin', 'b2b_pending', 'b2b_approved', 'b2b_rejected']);
 
 export async function requireAuth(req: AuthRequest, res: Response, next: NextFunction) {
   try {
@@ -36,9 +40,15 @@ export async function requireAuth(req: AuthRequest, res: Response, next: NextFun
       return;
     }
 
-    const payload = decoded as JwtPayload & Partial<AuthUser>;
+    const payload = decoded as JwtPayload & { id?: unknown; email?: unknown; role?: unknown };
 
     if (!payload.id || !payload.email || !payload.role) {
+      res.status(401).json({ message: 'Token inválido ou expirado' });
+      return;
+    }
+
+    const role = String(payload.role);
+    if (!VALID_ROLES.has(role as Role)) {
       res.status(401).json({ message: 'Token inválido ou expirado' });
       return;
     }
@@ -46,7 +56,7 @@ export async function requireAuth(req: AuthRequest, res: Response, next: NextFun
     req.user = {
       id: String(payload.id),
       email: String(payload.email),
-      role: String(payload.role),
+      role: role as Role,
     };
     next();
   } catch {
@@ -64,7 +74,7 @@ export async function requireAdmin(req: AuthRequest, res: Response, next: NextFu
   });
 }
 
-export function generateToken(user: { id: string; email: string; role: string }): string {
+export function generateToken(user: { id: string; email: string; role: Role }): string {
   return jwt.sign(
     { id: user.id, email: user.email, role: user.role },
     JWT_SECRET,

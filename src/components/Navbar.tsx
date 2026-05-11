@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useCart } from '../contexts/CartContext';
+import { SearchBar } from './SearchBar';
 
 export function Navbar() {
   const { isLoggedIn, isAdmin, signIn, signOut } = useAuth();
@@ -58,6 +59,7 @@ export function Navbar() {
                 {itemCount > 0 && <span className="cart-badge">{itemCount}</span>}
               </span>
             </Link>
+            <SearchBar />
             {!isLoggedIn ? (
               <>
                 <Link to="/cadastro" className="nav-link cadastro-link">Cadastre-se</Link>
@@ -96,6 +98,9 @@ export function Navbar() {
               <Link to="/cart" onClick={closeMobile} className="mobile-cart-link">
                 Carrinho {itemCount > 0 && <span className="mobile-cart-count">{itemCount}</span>}
               </Link>
+              <div className="mobile-search">
+                <SearchBar />
+              </div>
               {isLoggedIn && <Link to="/account" onClick={closeMobile}>Minha Conta</Link>}
               {isAdmin && <Link to="/admin" onClick={closeMobile}>Painel Admin</Link>}
               {!isLoggedIn ? (
