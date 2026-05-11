@@ -27,7 +27,7 @@ export function SearchBar() {
     }
     setLoading(true);
     try {
-      const data = await api<ProductResult[]>(`/products/search?q=${encodeURIComponent(q.trim())}`);
+      const data = await api<ProductResult[]>(`/api/products/search?q=${encodeURIComponent(q.trim())}`);
       setResults(data);
     } catch {
       setResults([]);

@@ -65,13 +65,18 @@ router.get('/published', async (_req: Request, res: Response) => {
 
 router.get('/search', async (req: Request, res: Response) => {
   try {
+    console.log('Search query:', req.query); // Log the raw query
     const q = (typeof req.query.q === 'string' ? req.query.q : '').trim();
+    console.log('Processed query:', q); // Log the processed query
+
     if (!q) {
       res.json([]);
       return;
     }
 
     const pattern = `%${q}%`;
+    console.log('Search pattern:', pattern); // Log the SQL pattern
+
     const result = await query(
       `SELECT * FROM products
        WHERE status = 'published'
@@ -80,10 +85,12 @@ router.get('/search', async (req: Request, res: Response) => {
        LIMIT 20`,
       [pattern, pattern],
     );
+
+    console.log('Search results:', result.rows.length); // Log number of results
     res.json(result.rows.map(normalizeProductRow));
   } catch (err: unknown) {
-    console.error('Product search error:', err);
-    res.status(500).json({ message: 'Erro ao buscar produtos' });
+    console.error('Product search ERROR:', err); // More detailed error logging
+    res.status(500).json({ message: 'Erro ao buscar produtos', error: String(err) });
   }
 });
 
