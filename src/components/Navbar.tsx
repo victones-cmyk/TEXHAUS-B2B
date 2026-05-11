@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import { ShoppingBag, User, LogOut, LayoutDashboard, Menu, X } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { useCart } from '../contexts/CartContext';
 import { SearchBar } from './SearchBar';
@@ -48,39 +49,47 @@ export function Navbar() {
             </Link>
           </div>
           <div className="nav-links">
-            <Link to="/">Home</Link>
-            <Link to="/loja">Catálogo</Link>
-            <Link to="/sobre-nos">Sobre Nós</Link>
-            <Link to="/blog">Blog</Link>
-            <Link to="/contato">Contato</Link>
-            <Link to="/cart" className="cart-icon-link">
-              <span className="cart-icon">
-                🛒
-                {itemCount > 0 && <span className="cart-badge">{itemCount}</span>}
-              </span>
-            </Link>
-            <SearchBar />
-            {!isLoggedIn ? (
-              <>
-                <Link to="/cadastro" className="nav-link cadastro-link">Cadastre-se</Link>
-                <button className="btn-secondary" onClick={() => setShowModal(true)}>Área do Parceiro</button>
-              </>
-            ) : (
-              <div className="user-profile">
-                <Link to="/account" className="nav-link">Minha Conta</Link>
-                {isAdmin && (
-                  <button className="logout-btn" onClick={handleAdminAccess} style={{ color: 'var(--color-accent)' }}>
-                    Painel Admin
+            <div className="nav-main-links">
+              <Link to="/">Home</Link>
+              <Link to="/loja">Catálogo</Link>
+              <Link to="/blog">Blog</Link>
+              <Link to="/contato">Contato</Link>
+            </div>
+            
+            <div className="nav-actions">
+              <SearchBar />
+              
+              <Link to="/cart" className="cart-icon-link" title="Carrinho">
+                <span className="cart-icon">
+                  <ShoppingBag size={20} />
+                  {itemCount > 0 && <span className="cart-badge">{itemCount}</span>}
+                </span>
+              </Link>
+
+              {!isLoggedIn ? (
+                <div className="auth-buttons">
+                  <Link to="/cadastro" className="btn-outline btn-small">Cadastro</Link>
+                  <button className="btn-primary btn-small" onClick={() => setShowModal(true)}>Acesso</button>
+                </div>
+              ) : (
+                <div className="user-profile">
+                  <Link to="/account" className="nav-icon-link" title="Minha Conta">
+                    <User size={20} />
+                  </Link>
+                  {isAdmin && (
+                    <button className="nav-icon-link admin-link" onClick={handleAdminAccess} title="Painel Admin">
+                      <LayoutDashboard size={20} />
+                    </button>
+                  )}
+                  <button className="nav-icon-link logout-link" onClick={signOut} title="Sair">
+                    <LogOut size={20} />
                   </button>
-                )}
-                <button className="logout-btn" onClick={signOut}>Sair</button>
-              </div>
-            )}
+                </div>
+              )}
+            </div>
           </div>
           <button className={`hamburger ${mobileOpen ? 'open' : ''}`} onClick={() => setMobileOpen(!mobileOpen)} aria-label="Menu">
-            <span></span>
-            <span></span>
-            <span></span>
+            {mobileOpen ? <X size={24} /> : <Menu size={24} />}
           </button>
         </div>
       </nav>
@@ -88,33 +97,44 @@ export function Navbar() {
       {mobileOpen && (
         <div className="mobile-menu-overlay" onClick={closeMobile}>
           <div className="mobile-menu" onClick={e => e.stopPropagation()}>
-            <button className="mobile-close" onClick={closeMobile}>&times;</button>
+            <button className="mobile-close" onClick={closeMobile}><X size={24} /></button>
             <div className="mobile-links">
               <Link to="/" onClick={closeMobile}>Home</Link>
               <Link to="/loja" onClick={closeMobile}>Catálogo</Link>
-              <Link to="/sobre-nos" onClick={closeMobile}>Sobre Nós</Link>
               <Link to="/blog" onClick={closeMobile}>Blog</Link>
               <Link to="/contato" onClick={closeMobile}>Contato</Link>
               <Link to="/cart" onClick={closeMobile} className="mobile-cart-link">
-                Carrinho {itemCount > 0 && <span className="mobile-cart-count">{itemCount}</span>}
+                <ShoppingBag size={20} />
+                <span>Carrinho</span>
+                {itemCount > 0 && <span className="mobile-cart-count">{itemCount}</span>}
               </Link>
               <div className="mobile-search">
                 <SearchBar />
               </div>
-              {isLoggedIn && <Link to="/account" onClick={closeMobile}>Minha Conta</Link>}
-              {isAdmin && <Link to="/admin" onClick={closeMobile}>Painel Admin</Link>}
-              {!isLoggedIn ? (
-                <>
-                  <Link to="/cadastro" onClick={closeMobile} className="mobile-cadastro-link">Cadastre-se</Link>
-                  <button className="btn-secondary mobile-auth-btn" onClick={() => { closeMobile(); setShowModal(true); }}>
-                    Área do Parceiro
-                  </button>
-                </>
-              ) : (
-                <button className="btn-secondary mobile-auth-btn logout" onClick={() => { closeMobile(); signOut(); }}>
-                  Sair
-                </button>
-              )}
+              <div className="mobile-auth-section">
+                {isLoggedIn ? (
+                  <>
+                    <Link to="/account" onClick={closeMobile} className="mobile-link-with-icon">
+                      <User size={18} /> Minha Conta
+                    </Link>
+                    {isAdmin && (
+                      <Link to="/admin" onClick={closeMobile} className="mobile-link-with-icon">
+                        <LayoutDashboard size={18} /> Painel Admin
+                      </Link>
+                    )}
+                    <button className="btn-secondary mobile-auth-btn logout" onClick={() => { closeMobile(); signOut(); }}>
+                      <LogOut size={18} /> Sair
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    <Link to="/cadastro" onClick={closeMobile} className="btn-outline mobile-auth-btn">Cadastro</Link>
+                    <button className="btn-primary mobile-auth-btn" onClick={() => { closeMobile(); setShowModal(true); }}>
+                      Área do Parceiro
+                    </button>
+                  </>
+                )}
+              </div>
             </div>
           </div>
         </div>

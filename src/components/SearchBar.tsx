@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { Search, X } from 'lucide-react';
 import { api } from '../lib/api';
 
 interface ProductResult {
@@ -87,10 +88,17 @@ export function SearchBar() {
     return null;
   };
 
+  const formatPrice = (price: number) => {
+    return new Intl.NumberFormat('pt-BR', {
+      style: 'currency',
+      currency: 'BRL',
+    }).format(price);
+  };
+
   return (
     <div className="search-bar-container" ref={containerRef}>
       <div className="search-input-wrapper">
-        <span className="search-icon">&#x1F50D;</span>
+        <Search className="search-icon" size={16} />
         <input
           type="text"
           className="search-input"
@@ -113,7 +121,7 @@ export function SearchBar() {
             }}
             type="button"
           >
-            &times;
+            <X size={16} />
           </button>
         )}
       </div>
@@ -137,12 +145,19 @@ export function SearchBar() {
                   role="option"
                   aria-selected={false}
                 >
-                  {img && <img src={img} alt="" className="search-result-img" />}
+                  <div className="search-result-img-container">
+                    {img ? <img src={img} alt="" className="search-result-img" /> : <div className="search-result-placeholder" />}
+                  </div>
                   <div className="search-result-info">
                     <span className="search-result-name">{product.name}</span>
-                    {product.category && (
-                      <span className="search-result-category">{product.category}</span>
-                    )}
+                    <div className="search-result-meta">
+                      {product.category && (
+                        <span className="search-result-category">{product.category}</span>
+                      )}
+                      {product.price > 0 && (
+                        <span className="search-result-price">{formatPrice(product.price)}</span>
+                      )}
+                    </div>
                   </div>
                 </div>
               );

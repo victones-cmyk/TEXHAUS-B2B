@@ -85,7 +85,7 @@ router.get('/search', async (req: Request, res: Response) => {
     console.log('Total products:', totalProductsResult.rows[0].count);
 
     const result = await query(
-      `SELECT id, name, status FROM products
+      `SELECT * FROM products
        WHERE status = 'published'
          AND (
            LOWER(name) LIKE LOWER($1) OR 
