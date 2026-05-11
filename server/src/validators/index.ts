@@ -104,6 +104,11 @@ export const idParamSchema = z.object({
   id: z.string().trim().min(1),
 });
 
+export const paginationSchema = z.object({
+  limit: z.coerce.number().int().positive().max(100).default(20),
+  offset: z.coerce.number().int().nonnegative().default(0),
+});
+
 export const changePasswordSchema = z.object({
   currentPassword: z.string().min(1, 'Senha atual é obrigatória'),
   newPassword: z.string().min(8, 'Nova senha deve ter pelo menos 8 caracteres'),

@@ -1,14 +1,18 @@
 import { Router, Response } from 'express';
 import { getClient, query } from '../db.js';
 import { requireAuth, requireAdmin, AuthRequest } from '../middleware/auth.js';
-import { createOrderSchema, updateOrderStatusSchema, idParamSchema } from '../validators/index.js';
+import { createOrderSchema, updateOrderStatusSchema, idParamSchema, paginationSchema } from '../validators/index.js';
 import { validatePayload } from '../utils/validation.js';
 
 const router = Router();
 
-router.get('/', requireAdmin, async (_req: AuthRequest, res: Response) => {
+router.get('/', requireAdmin, async (req: AuthRequest, res: Response) => {
   try {
-    const result = await query('SELECT * FROM orders ORDER BY created_at DESC');
+    const { limit, offset } = paginationSchema.parse(req.query);
+    const result = await query(
+      'SELECT * FROM orders ORDER BY created_at DESC LIMIT $1 OFFSET $2',
+      [limit, offset]
+    );
     res.json(result.rows);
   } catch (err: unknown) {
     console.error('Orders list error:', err);
@@ -18,9 +22,10 @@ router.get('/', requireAdmin, async (_req: AuthRequest, res: Response) => {
 
 router.get('/my', requireAuth, async (req: AuthRequest, res: Response) => {
   try {
+    const { limit, offset } = paginationSchema.parse(req.query);
     const result = await query(
-      'SELECT * FROM orders WHERE user_id = $1 ORDER BY created_at DESC',
-      [req.user!.id],
+      'SELECT * FROM orders WHERE user_id = $1 ORDER BY created_at DESC LIMIT $2 OFFSET $3',
+      [req.user!.id, limit, offset],
     );
     res.json(result.rows);
   } catch (err: unknown) {

@@ -1,11 +1,12 @@
 import { Router, Request, Response } from 'express';
-import { query } from '../db.js';
+import { getClient, query } from '../db.js';
 import { requireAdmin, AuthRequest } from '../middleware/auth.js';
 import {
   createProductSchema,
   updateProductSchema,
   upsertVariationsSchema,
   idParamSchema,
+  paginationSchema,
 } from '../validators/index.js';
 import { validatePayload } from '../utils/validation.js';
 
@@ -43,9 +44,13 @@ function normalizeProductRow<T extends Record<string, unknown>>(row: T): T {
   return { ...result, images: [] as unknown as T['images'] };
 }
 
-router.get('/', async (_req: Request, res: Response) => {
+router.get('/', async (req: Request, res: Response) => {
   try {
-    const result = await query('SELECT * FROM products ORDER BY created_at DESC');
+    const { limit, offset } = paginationSchema.parse(req.query);
+    const result = await query(
+      'SELECT * FROM products ORDER BY created_at DESC LIMIT $1 OFFSET $2',
+      [limit, offset]
+    );
     res.json(result.rows.map(normalizeProductRow));
   } catch (err: unknown) {
     console.error('Products list error:', err);
@@ -53,9 +58,13 @@ router.get('/', async (_req: Request, res: Response) => {
   }
 });
 
-router.get('/published', async (_req: Request, res: Response) => {
+router.get('/published', async (req: Request, res: Response) => {
   try {
-    const result = await query("SELECT * FROM products WHERE status = 'published' ORDER BY created_at DESC");
+    const { limit, offset } = paginationSchema.parse(req.query);
+    const result = await query(
+      "SELECT * FROM products WHERE status = 'published' ORDER BY created_at DESC LIMIT $1 OFFSET $2",
+      [limit, offset]
+    );
     res.json(result.rows.map(normalizeProductRow));
   } catch (err: unknown) {
     console.error('Products published error:', err);
@@ -65,47 +74,33 @@ router.get('/published', async (_req: Request, res: Response) => {
 
 router.get('/search', async (req: Request, res: Response) => {
   try {
-    console.log('Raw query:', req.query);
-    console.log('Full request:', req.url);
-
     const q = (typeof req.query.q === 'string' ? req.query.q : '').trim();
-    console.log('Processed query:', q);
-
     if (!q) {
-      console.log('Empty query, returning empty array');
       res.json([]);
       return;
     }
 
+    const { limit, offset } = paginationSchema.parse(req.query);
+    const status = typeof req.query.status === 'string' ? req.query.status : 'published';
+    
     const pattern = `%${q}%`;
-    console.log('Search pattern:', pattern);
+    
+    let sql = `SELECT * FROM products WHERE (LOWER(name) LIKE LOWER($1) OR LOWER(description) LIKE LOWER($2))`;
+    const params: unknown[] = [pattern, pattern];
 
-    // Check total products first
-    const totalProductsResult = await query('SELECT COUNT(*) FROM products');
-    console.log('Total products:', totalProductsResult.rows[0].count);
+    if (status !== 'all') {
+      sql += ` AND status = $3`;
+      params.push(status);
+    }
 
-    const result = await query(
-      `SELECT * FROM products
-       WHERE status = 'published'
-         AND (
-           LOWER(name) LIKE LOWER($1) OR 
-           LOWER(description) LIKE LOWER($2)
-         )
-       ORDER BY created_at DESC
-       LIMIT 20`,
-      [pattern, pattern]
-    );
+    sql += ` ORDER BY created_at DESC LIMIT $${params.length + 1} OFFSET $${params.length + 2}`;
+    params.push(limit, offset);
 
-    console.log('Search results:', result.rows);
-    console.log('Results count:', result.rows.length);
-
+    const result = await query(sql, params);
     res.json(result.rows.map(normalizeProductRow));
   } catch (err: unknown) {
-    console.error('Product search ERROR (full):', err);
-    res.status(500).json({
-      message: 'Erro ao buscar produtos',
-      error: err instanceof Error ? err.message : String(err)
-    });
+    console.error('Product search error:', err);
+    res.status(500).json({ message: 'Erro ao buscar produtos' });
   }
 });
 
@@ -206,6 +201,7 @@ router.get('/:id/variations', async (req: Request, res: Response) => {
 });
 
 router.put('/:id/variations', requireAdmin, async (req: AuthRequest, res: Response) => {
+  const client = await getClient();
   try {
     const params = validatePayload(idParamSchema, req.params, res, 'ID inválido');
     if (!params) return;
@@ -214,10 +210,12 @@ router.put('/:id/variations', requireAdmin, async (req: AuthRequest, res: Respon
     const variations = validatePayload(upsertVariationsSchema, req.body, res, 'Variações inválidas');
     if (!variations) return;
 
-    await query('DELETE FROM product_variations WHERE product_id = $1', [productId]);
+    await client.query('BEGIN');
+
+    await client.query('DELETE FROM product_variations WHERE product_id = $1', [productId]);
 
     if (variations.length > 0) {
-      const values = variations.map((v, i) =>
+      const values = variations.map((_, i) =>
         `($${i * 7 + 1}, $${i * 7 + 2}, $${i * 7 + 3}, $${i * 7 + 4}, $${i * 7 + 5}, $${i * 7 + 6}, $${i * 7 + 7})`,
       ).join(', ');
 
@@ -225,16 +223,20 @@ router.put('/:id/variations', requireAdmin, async (req: AuthRequest, res: Respon
         productId, v.name, v.sku || '', v.price_modifier || 0, v.stock_quantity || 0, v.image_url || '', v.sort_order || 0,
       ]);
 
-      await query(
+      await client.query(
         `INSERT INTO product_variations (product_id, name, sku, price_modifier, stock_quantity, image_url, sort_order) VALUES ${values}`,
         params,
       );
     }
 
+    await client.query('COMMIT');
     res.json({ message: 'Variações salvas' });
   } catch (err: unknown) {
+    await client.query('ROLLBACK');
     console.error('Variations save error:', err);
     res.status(500).json({ message: 'Erro ao salvar variações' });
+  } finally {
+    client.release();
   }
 });
 
