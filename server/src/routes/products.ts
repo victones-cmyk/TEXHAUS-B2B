@@ -65,32 +65,47 @@ router.get('/published', async (_req: Request, res: Response) => {
 
 router.get('/search', async (req: Request, res: Response) => {
   try {
-    console.log('Search query:', req.query); // Log the raw query
+    console.log('Raw query:', req.query);
+    console.log('Full request:', req.url);
+    
     const q = (typeof req.query.q === 'string' ? req.query.q : '').trim();
-    console.log('Processed query:', q); // Log the processed query
+    console.log('Processed query:', q);
 
     if (!q) {
+      console.log('Empty query, returning empty array');
       res.json([]);
       return;
     }
 
     const pattern = `%${q}%`;
-    console.log('Search pattern:', pattern); // Log the SQL pattern
+    console.log('Search pattern:', pattern);
+
+    // Check total products first
+    const totalProductsResult = await query('SELECT COUNT(*) FROM products');
+    console.log('Total products:', totalProductsResult.rows[0].count);
 
     const result = await query(
-      `SELECT * FROM products
+      `SELECT id, name, status FROM products
        WHERE status = 'published'
-         AND (name ILIKE $1 OR description ILIKE $2)
+         AND (
+           LOWER(name) LIKE LOWER($1) OR 
+           LOWER(description) LIKE LOWER($2)
+         )
        ORDER BY created_at DESC
        LIMIT 20`,
-      [pattern, pattern],
+      [pattern, pattern]
     );
 
-    console.log('Search results:', result.rows.length); // Log number of results
+    console.log('Search results:', result.rows);
+    console.log('Results count:', result.rows.length);
+
     res.json(result.rows.map(normalizeProductRow));
   } catch (err: unknown) {
-    console.error('Product search ERROR:', err); // More detailed error logging
-    res.status(500).json({ message: 'Erro ao buscar produtos', error: String(err) });
+    console.error('Product search ERROR (full):', err);
+    res.status(500).json({ 
+      message: 'Erro ao buscar produtos', 
+      error: err instanceof Error ? err.message : String(err) 
+    });
   }
 });
 
