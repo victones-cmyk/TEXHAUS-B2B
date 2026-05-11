@@ -67,7 +67,7 @@ router.get('/search', async (req: Request, res: Response) => {
   try {
     console.log('Raw query:', req.query);
     console.log('Full request:', req.url);
-    
+
     const q = (typeof req.query.q === 'string' ? req.query.q : '').trim();
     console.log('Processed query:', q);
 
@@ -102,9 +102,9 @@ router.get('/search', async (req: Request, res: Response) => {
     res.json(result.rows.map(normalizeProductRow));
   } catch (err: unknown) {
     console.error('Product search ERROR (full):', err);
-    res.status(500).json({ 
-      message: 'Erro ao buscar produtos', 
-      error: err instanceof Error ? err.message : String(err) 
+    res.status(500).json({
+      message: 'Erro ao buscar produtos',
+      error: err instanceof Error ? err.message : String(err)
     });
   }
 });

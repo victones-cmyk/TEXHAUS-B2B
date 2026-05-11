@@ -167,7 +167,7 @@ export function Catalog() {
                         {!isLoggedIn && (
                           <div className="b2b-overlay">
                             <span>Área Restrita</span>
-                            <button className="btn-primary" onClick={e => { e.preventDefault(); }}>Acesso B2B</button>
+                            <button className="btn-primary btn-small" onClick={e => { e.preventDefault(); }}>Acesso B2B</button>
                           </div>
                         )}
                       </Link>
@@ -179,7 +179,7 @@ export function Catalog() {
                             <span className="price">
                               {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(product.price)}
                             </span>
-                            <button className="btn-primary" style={{ width: '100%' }} onClick={() => { addToCart(product); toast(`${product.name} adicionado ao carrinho`, 'success'); }}>
+                            <button className="btn-primary btn-small" style={{ width: '100%' }} onClick={() => { addToCart(product); toast(`${product.name} adicionado ao carrinho`, 'success'); }}>
                               Comprar
                             </button>
                           </div>
